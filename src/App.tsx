@@ -297,7 +297,7 @@ function App() {
         </div>
       </header>
 
-      <main id="workspace" className="workspace">
+      <main id="workspace" className={`workspace${products.length > 0 ? " work-mode" : ""}`}>
         <section className="page-heading">
           <div>
             <div className="eyebrow"><span className="eyebrow-line" /> PRODUCT DISCOVERY</div>
@@ -307,33 +307,54 @@ function App() {
           <div className="privacy-note"><CheckCircle2 size={16} /> 文件仅在浏览器本地解析</div>
         </section>
 
-        <section className="import-card">
-          <div className="import-copy">
-            <div className="section-icon"><FileSpreadsheet size={20} /></div>
-            <div>
-              <div className="section-kicker">数据源</div>
-              <h2>导入 EchoTik 商品列表</h2>
-              <p>支持 .xlsx / .xls，自动识别第 2 行字段表头。</p>
+        {products.length > 0 ? (
+          <section className="source-bar">
+            <div className="source-bar-main">
+              <div className="source-bar-icon"><FileSpreadsheet size={18} /></div>
+              <div className="source-file">
+                <span>当前数据源</span>
+                <strong title={fileName}>{fileName}</strong>
+              </div>
+              <span className="source-divider" />
+              <span className="source-product-count">{formatCount(products.length)} 件商品</span>
             </div>
-          </div>
-          <div
-            className={`dropzone${isDragging ? " dragging" : ""}`}
-            onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") fileInputRef.current?.click();
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label="选择或拖入 Excel 文件"
-          >
-            <CloudUpload size={19} />
-            <span>{isLoading ? "正在解析文件…" : "拖入文件，或点击选择"}</span>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden />
-          </div>
-        </section>
+            <div className="source-bar-actions">
+              <span className="source-local-note"><CheckCircle2 size={14} /> 本地解析</span>
+              <button className="compact-import-button" onClick={() => fileInputRef.current?.click()}>
+                <CloudUpload size={15} /> {isLoading ? "正在解析…" : "更换 Excel"}
+              </button>
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden />
+            </div>
+          </section>
+        ) : (
+          <section className="import-card">
+            <div className="import-copy">
+              <div className="section-icon"><FileSpreadsheet size={20} /></div>
+              <div>
+                <div className="section-kicker">数据源</div>
+                <h2>导入 EchoTik 商品列表</h2>
+                <p>支持 .xlsx / .xls，自动识别第 2 行字段表头。</p>
+              </div>
+            </div>
+            <div
+              className={`dropzone${isDragging ? " dragging" : ""}`}
+              onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") fileInputRef.current?.click();
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="选择或拖入 Excel 文件"
+            >
+              <CloudUpload size={19} />
+              <span>{isLoading ? "正在解析文件…" : "拖入文件，或点击选择"}</span>
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden />
+            </div>
+          </section>
+        )}
 
         {error && (
           <div className="notice error-notice" role="alert">
@@ -347,9 +368,9 @@ function App() {
           <>
             <section className="overview-grid">
               <div className="overview-main">
-                <div className="overview-label"><CheckCircle2 size={16} /> 已成功导入</div>
-                <div className="overview-number">{formatCount(products.length)} <small>件商品</small></div>
-                <div className="file-meta"><FileSpreadsheet size={14} /> {fileName}</div>
+                <span>导入数量</span>
+                <strong>{formatCount(products.length)}</strong>
+                <small>件商品</small>
               </div>
               <div className="overview-stat">
                 <span>当前结果</span>
