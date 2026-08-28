@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { parseSellerRankWorkbook } from "./parser";
+import { usePersistedState } from "./persistence";
 import type { PercentilePreset, SellerRank, SellerRankFilters, SellerRankSortField, SortDirection } from "./types";
 import { formatCompact, formatCount, getPercentileThresholds, presetThreshold } from "./utils";
 
@@ -33,6 +34,28 @@ const initialFilters: SellerRankFilters = {
   creators: "all",
   videos: "all",
 };
+
+interface SellerRankWorkspaceState {
+  sellers: SellerRank[];
+  fileName: string;
+  importedAt: string;
+  draftFilters: SellerRankFilters;
+  appliedFilters: SellerRankFilters;
+  sort: { field: SellerRankSortField; direction: SortDirection };
+  parseNotice: string;
+  foundHeaderCount: number;
+}
+
+const initialWorkspaceState = (): SellerRankWorkspaceState => ({
+  sellers: [],
+  fileName: "",
+  importedAt: "",
+  draftFilters: { ...initialFilters },
+  appliedFilters: { ...initialFilters },
+  sort: { field: "salesAmount", direction: "desc" },
+  parseNotice: "",
+  foundHeaderCount: 0,
+});
 
 const sortLabels: Record<SellerRankSortField, string> = {
   salesAmount: "销售额",
@@ -88,16 +111,11 @@ function SellerSortButton({ field, sort, onSort }: {
 
 export default function SellerRankBoard({ kind, hidden }: { kind: SellerBoardKind; hidden: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [sellers, setSellers] = useState<SellerRank[]>([]);
-  const [fileName, setFileName] = useState("");
-  const [draftFilters, setDraftFilters] = useState<SellerRankFilters>(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState<SellerRankFilters>(initialFilters);
-  const [sort, setSort] = useState<{ field: SellerRankSortField; direction: SortDirection }>({ field: "salesAmount", direction: "desc" });
+  const [workspace, setWorkspace] = usePersistedState<SellerRankWorkspaceState>(`seller-${kind}`, initialWorkspaceState);
+  const { sellers, fileName, draftFilters, appliedFilters, sort, parseNotice, foundHeaderCount } = workspace;
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [parseNotice, setParseNotice] = useState("");
-  const [foundHeaderCount, setFoundHeaderCount] = useState(0);
   const name = boardName(kind);
 
   const thresholds = useMemo(() => ({ creators: getPercentileThresholds(sellers, "creators"), videos: getPercentileThresholds(sellers, "videos") }), [sellers]);
@@ -127,22 +145,21 @@ export default function SellerRankBoard({ kind, hidden }: { kind: SellerBoardKin
     });
   }, [appliedFilters, sellers, sort, thresholds]);
 
-  const updateFilter = <K extends keyof SellerRankFilters>(key: K, value: SellerRankFilters[K]) => setDraftFilters((current) => ({ ...current, [key]: value }));
-  const clearFilters = () => { setDraftFilters({ ...initialFilters }); setAppliedFilters({ ...initialFilters }); };
+  const updateFilter = <K extends keyof SellerRankFilters>(key: K, value: SellerRankFilters[K]) => setWorkspace((current) => ({ ...current, draftFilters: { ...current.draftFilters, [key]: value } }));
+  const clearFilters = () => setWorkspace((current) => ({ ...current, draftFilters: { ...initialFilters }, appliedFilters: { ...initialFilters } }));
+  const setSort = (update: (current: { field: SellerRankSortField; direction: SortDirection }) => { field: SellerRankSortField; direction: SortDirection }) => setWorkspace((current) => ({ ...current, sort: update(current.sort) }));
   const hasDraftChanges = !filtersEqual(draftFilters, appliedFilters);
   const hasAnyFilterValues = hasActiveFilters(draftFilters) || hasActiveFilters(appliedFilters);
 
   const loadFile = async (file?: File) => {
     if (!file) return;
-    setError(""); setParseNotice(""); setIsLoading(true);
+    setError(""); setIsLoading(true);
     try {
       const result = await parseSellerRankWorkbook(file);
-      setSellers(result.sellers); setFileName(file.name); setFoundHeaderCount(result.foundHeaders.length);
-      setDraftFilters({ ...initialFilters }); setAppliedFilters({ ...initialFilters });
       const notices: string[] = [];
       if (result.missingHeaders.length) notices.push(`未找到字段：${result.missingHeaders.join("、")}，对应数据将显示为 —`);
       if (result.skippedRows) notices.push(`已跳过 ${result.skippedRows} 行缺少店铺名称或有效链接的数据`);
-      setParseNotice(notices.join("；"));
+      setWorkspace({ sellers: result.sellers, fileName: file.name, importedAt: new Date().toISOString(), draftFilters: { ...initialFilters }, appliedFilters: { ...initialFilters }, sort: { field: "salesAmount", direction: "desc" }, parseNotice: notices.join("；"), foundHeaderCount: result.foundHeaders.length });
     } catch (caught) { setError(caught instanceof Error ? caught.message : "文件解析失败，请检查文件后重试。"); }
     finally { setIsLoading(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
   };
@@ -152,7 +169,7 @@ export default function SellerRankBoard({ kind, hidden }: { kind: SellerBoardKin
     {error && <div className="notice error-notice" role="alert"><AlertTriangle size={18} /><span>{error}</span><button aria-label="关闭错误提示" onClick={() => setError("")}><X size={16} /></button></div>}
     {sellers.length > 0 && <><section className="overview-grid"><div className="overview-main"><span>导入数量</span><strong>{formatCount(sellers.length)}</strong><small>家店铺</small></div><div className="overview-stat"><span>当前结果</span><strong>{formatCount(filteredSellers.length)}</strong><small>符合筛选条件</small></div><div className="overview-stat"><span>带货分类</span><strong>{categories.length}</strong><small>已识别分类</small></div><div className="overview-stat accent-stat"><span>当前排序</span><strong>{sortLabels[sort.field]}</strong><small>{sort.direction === "desc" ? "从高到低" : "从低到高"}</small></div></section>
       {parseNotice && <div className="notice info-notice"><CircleHelp size={17} /><span>{parseNotice}</span></div>}
-      <section className="filter-card"><div className="filter-card-header"><div className="filter-title"><Filter size={17} /><strong>筛选条件</strong><span>{hasActiveFilters(appliedFilters) ? "已启用组合筛选" : "全部店铺"}</span></div><div className="filter-card-actions">{hasDraftChanges && <span className="pending-filter-note">条件已修改，点击应用筛选生效</span>}<button className="apply-button" onClick={() => setAppliedFilters({ ...draftFilters })} disabled={!hasDraftChanges}><Check size={15} /> 应用筛选</button>{hasAnyFilterValues && <button className="text-button" onClick={clearFilters}><RefreshCw size={14} /> 清除筛选</button>}</div></div><div className="filter-grid seller-filter-grid"><RangeInput label="销售额 (£)" minValue={draftFilters.salesAmountMin} maxValue={draftFilters.salesAmountMax} onMinChange={(value) => updateFilter("salesAmountMin", value)} onMaxChange={(value) => updateFilter("salesAmountMax", value)} /><RangeInput label="销量" minValue={draftFilters.salesMin} maxValue={draftFilters.salesMax} onMinChange={(value) => updateFilter("salesMin", value)} onMaxChange={(value) => updateFilter("salesMax", value)} /><RangeInput label="带货商品数" minValue={draftFilters.productsMin} maxValue={draftFilters.productsMax} onMinChange={(value) => updateFilter("productsMin", value)} onMaxChange={(value) => updateFilter("productsMax", value)} /><div className="filter-block"><label htmlFor={`${kind}-category-filter`}>带货分类</label><div className="select-wrap"><select id={`${kind}-category-filter`} value={draftFilters.category} onChange={(event) => updateFilter("category", event.target.value)}><option value="all">不限</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><ChevronDown size={15} /></div></div><div className="filter-block"><label htmlFor={`${kind}-creators-filter`}>达人 <span className="label-help" title="百分位基于当前导入的完整卖家榜数据计算"><CircleHelp size={13} /></span></label><div className="select-wrap"><select id={`${kind}-creators-filter`} value={draftFilters.creators} onChange={(event) => updateFilter("creators", event.target.value as PercentilePreset)}><option value="all">不限</option><option value="p15">最低 15% · ≤ {formatCompact(thresholds.creators.p15)}</option><option value="p20">最低 20% · ≤ {formatCompact(thresholds.creators.p20)}</option><option value="p50">最低 50% · ≤ {formatCompact(thresholds.creators.p50)}</option></select><ChevronDown size={15} /></div></div><div className="filter-block"><label htmlFor={`${kind}-videos-filter`}>视频数 <span className="label-help" title="百分位基于当前导入的完整卖家榜数据计算"><CircleHelp size={13} /></span></label><div className="select-wrap"><select id={`${kind}-videos-filter`} value={draftFilters.videos} onChange={(event) => updateFilter("videos", event.target.value as PercentilePreset)}><option value="all">不限</option><option value="p15">最低 15% · ≤ {formatCompact(thresholds.videos.p15)}</option><option value="p20">最低 20% · ≤ {formatCompact(thresholds.videos.p20)}</option><option value="p50">最低 50% · ≤ {formatCompact(thresholds.videos.p50)}</option></select><ChevronDown size={15} /></div></div></div><div className="filter-footnote"><Search size={13} /> 百分位档位根据本次导入的完整卖家榜数据动态计算，支持多个条件同时生效。</div></section>
+      <section className="filter-card"><div className="filter-card-header"><div className="filter-title"><Filter size={17} /><strong>筛选条件</strong><span>{hasActiveFilters(appliedFilters) ? "已启用组合筛选" : "全部店铺"}</span></div><div className="filter-card-actions">{hasDraftChanges && <span className="pending-filter-note">条件已修改，点击应用筛选生效</span>}<button className="apply-button" onClick={() => setWorkspace((current) => ({ ...current, appliedFilters: { ...current.draftFilters } }))} disabled={!hasDraftChanges}><Check size={15} /> 应用筛选</button>{hasAnyFilterValues && <button className="text-button" onClick={clearFilters}><RefreshCw size={14} /> 清除筛选</button>}</div></div><div className="filter-grid seller-filter-grid"><RangeInput label="销售额 (£)" minValue={draftFilters.salesAmountMin} maxValue={draftFilters.salesAmountMax} onMinChange={(value) => updateFilter("salesAmountMin", value)} onMaxChange={(value) => updateFilter("salesAmountMax", value)} /><RangeInput label="销量" minValue={draftFilters.salesMin} maxValue={draftFilters.salesMax} onMinChange={(value) => updateFilter("salesMin", value)} onMaxChange={(value) => updateFilter("salesMax", value)} /><RangeInput label="带货商品数" minValue={draftFilters.productsMin} maxValue={draftFilters.productsMax} onMinChange={(value) => updateFilter("productsMin", value)} onMaxChange={(value) => updateFilter("productsMax", value)} /><div className="filter-block"><label htmlFor={`${kind}-category-filter`}>带货分类</label><div className="select-wrap"><select id={`${kind}-category-filter`} value={draftFilters.category} onChange={(event) => updateFilter("category", event.target.value)}><option value="all">不限</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><ChevronDown size={15} /></div></div><div className="filter-block"><label htmlFor={`${kind}-creators-filter`}>达人 <span className="label-help" title="百分位基于当前导入的完整卖家榜数据计算"><CircleHelp size={13} /></span></label><div className="select-wrap"><select id={`${kind}-creators-filter`} value={draftFilters.creators} onChange={(event) => updateFilter("creators", event.target.value as PercentilePreset)}><option value="all">不限</option><option value="p15">最低 15% · ≤ {formatCompact(thresholds.creators.p15)}</option><option value="p20">最低 20% · ≤ {formatCompact(thresholds.creators.p20)}</option><option value="p50">最低 50% · ≤ {formatCompact(thresholds.creators.p50)}</option></select><ChevronDown size={15} /></div></div><div className="filter-block"><label htmlFor={`${kind}-videos-filter`}>视频数 <span className="label-help" title="百分位基于当前导入的完整卖家榜数据计算"><CircleHelp size={13} /></span></label><div className="select-wrap"><select id={`${kind}-videos-filter`} value={draftFilters.videos} onChange={(event) => updateFilter("videos", event.target.value as PercentilePreset)}><option value="all">不限</option><option value="p15">最低 15% · ≤ {formatCompact(thresholds.videos.p15)}</option><option value="p20">最低 20% · ≤ {formatCompact(thresholds.videos.p20)}</option><option value="p50">最低 50% · ≤ {formatCompact(thresholds.videos.p50)}</option></select><ChevronDown size={15} /></div></div></div><div className="filter-footnote"><Search size={13} /> 百分位档位根据本次导入的完整卖家榜数据动态计算，支持多个条件同时生效。</div></section>
       <section className="list-card"><div className="list-card-header"><div><div className="list-heading"><h2>{name}</h2><span className="result-pill">{formatCount(filteredSellers.length)} 个结果</span></div><p>点击店铺名称打开 EchoTik 原店铺页</p></div><div className="list-actions"><Store size={15} /> {presetName(appliedFilters.creators)} 达人 · {presetName(appliedFilters.videos)} 视频</div></div><div className="table-wrap"><table className="seller-table"><thead><tr><th className="seller-name-column">店铺</th><th>带货分类</th><th>地区</th><th><SellerSortButton field="salesAmount" sort={sort} onSort={(field) => setSort((current) => ({ field, direction: current.field === field && current.direction === "desc" ? "asc" : "desc" }))} /></th><th><SellerSortButton field="sales" sort={sort} onSort={(field) => setSort((current) => ({ field, direction: current.field === field && current.direction === "desc" ? "asc" : "desc" }))} /></th><th><SellerSortButton field="promotedProductCount" sort={sort} onSort={(field) => setSort((current) => ({ field, direction: current.field === field && current.direction === "desc" ? "asc" : "desc" }))} /></th><th><SellerSortButton field="creators" sort={sort} onSort={(field) => setSort((current) => ({ field, direction: current.field === field && current.direction === "desc" ? "asc" : "desc" }))} /></th><th><SellerSortButton field="videos" sort={sort} onSort={(field) => setSort((current) => ({ field, direction: current.field === field && current.direction === "desc" ? "asc" : "desc" }))} /></th><th><SellerSortButton field="lives" sort={sort} onSort={(field) => setSort((current) => ({ field, direction: current.field === field && current.direction === "desc" ? "asc" : "desc" }))} /></th></tr></thead><tbody>{filteredSellers.map((seller) => <tr key={`${seller.id}-${seller.url}`}><td className="seller-name-column"><a className="shop-name-link" href={seller.url} target="_blank" rel="noreferrer"><span className="shop-avatar"><Store size={17} /></span><span><strong title={seller.name}>{seller.name}</strong><small>{seller.collectedAt || "—"}</small></span></a></td><td><span className="seller-category">{seller.deliveryCategory}</span></td><td><span className="metric-value">{seller.region}</span></td><td><span className="metric-value highlight">£{formatCompact(seller.salesAmount)}</span></td><td><span className="metric-value">{formatCompact(seller.sales)}</span></td><td><span className="metric-value">{formatCompact(seller.promotedProductCount)}</span></td><td><span className="metric-value">{formatCount(seller.creators)}</span></td><td><span className="metric-value">{formatCount(seller.videos)}</span></td><td><span className="metric-value">{formatCount(seller.lives)}</span></td></tr>)}</tbody></table>{!filteredSellers.length && <div className="no-results"><div className="empty-icon small"><Search size={20} /></div><strong>没有符合条件的店铺</strong><span>尝试放宽筛选范围，或清除筛选重新查看。</span><button className="text-button" onClick={clearFilters}>清除筛选</button></div>}</div></section>
     </>}
     {!sellers.length && !error && <div className="empty-state"><div className="empty-icon"><Store size={30} /></div><h2>导入{name}数据，开始筛选</h2><p>支持 EchoTik 导出的卖家榜 Excel，文件只在当前浏览器本地解析。</p><button className="primary-button" onClick={() => fileInputRef.current?.click()}><CloudUpload size={17} /> 选择 Excel 文件</button></div>}

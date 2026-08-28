@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { parseProductWorkbook } from "./parser";
 import ShopBoard from "./ShopBoard";
+import { clearWorkspaceData, resetPersistedState, usePersistedState } from "./persistence";
 import type {
   Filters,
   PercentilePreset,
@@ -66,6 +67,7 @@ const sortLabel = (field: SortField, period: ProductPeriod): string =>
 interface ProductDataset {
   products: Product[];
   fileName: string;
+  importedAt: string;
   foundHeaderCount: number;
   parseNotice: string;
   draftFilters: Filters;
@@ -74,6 +76,13 @@ interface ProductDataset {
 }
 
 type ProductDatasets = Partial<Record<ProductPeriod, ProductDataset>>;
+
+interface ProductWorkspaceState {
+  productDatasets: ProductDatasets;
+  activePeriod: ProductPeriod;
+}
+
+interface UiState { activeModule: "products" | "shops"; }
 
 const presetName = (preset: PercentilePreset): string => {
   if (preset === "p15") return "最低 15%";
@@ -193,13 +202,19 @@ function EmptyState({ onPick }: { onPick: () => void }) {
 }
 
 function App() {
-  const [activeModule, setActiveModule] = useState<"products" | "shops">("products");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [productDatasets, setProductDatasets] = useState<ProductDatasets>({});
-  const [activePeriod, setActivePeriod] = useState<ProductPeriod>("7d");
+  const [uiState, setUiState, uiRestored] = usePersistedState<UiState>("ui", () => ({ activeModule: "products" }));
+  const [productWorkspace, setProductWorkspace, productRestored] = usePersistedState<ProductWorkspaceState>("products", () => ({ productDatasets: {}, activePeriod: "7d" }));
+  const activeModule = uiState.activeModule;
+  const setActiveModule = (activeModule: UiState["activeModule"]) => setUiState({ activeModule });
+  const productDatasets = productWorkspace.productDatasets;
+  const activePeriod = productWorkspace.activePeriod;
+  const setActivePeriod = (activePeriod: ProductPeriod) => setProductWorkspace((current) => ({ ...current, activePeriod }));
+  const setProductDatasets = (update: (current: ProductDatasets) => ProductDatasets) => setProductWorkspace((current) => ({ ...current, productDatasets: update(current.productDatasets) }));
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isClearing, setIsClearing] = useState(false);
   const activeDataset = productDatasets[activePeriod];
   const products = activeDataset?.products ?? [];
   const fileName = activeDataset?.fileName ?? "";
@@ -286,6 +301,7 @@ function App() {
         [result.period]: {
           products: result.products,
           fileName: file.name,
+          importedAt: new Date().toISOString(),
           foundHeaderCount: result.foundHeaders.length,
           parseNotice: notices.join("；"),
           draftFilters: { ...initialFilters },
@@ -316,6 +332,15 @@ function App() {
   const appliedFiltersActive = hasActiveFilters(appliedFilters);
   const hasAnyFilterValues = hasActiveFilters(draftFilters) || hasActiveFilters(appliedFilters);
 
+  const clearLocalData = async () => {
+    if (!window.confirm("确定清除当前浏览器中的全部工作台数据吗？此操作不会影响原始 Excel 文件。")) return;
+    setIsClearing(true);
+    await clearWorkspaceData();
+    resetPersistedState();
+    setError("");
+    setIsClearing(false);
+  };
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -331,7 +356,8 @@ function App() {
           <button type="button" className={activeModule === "shops" ? "active" : ""} onClick={() => setActiveModule("shops")}><Store size={16} /> 店铺榜单</button>
         </nav>
         <div className="topbar-right">
-          <div className="local-badge"><span className="status-dot" /> 本地工作区</div>
+          <div className="local-badge"><span className="status-dot" /> {uiRestored && productRestored ? "已本地保存" : "正在恢复…"}</div>
+          <button className="clear-local-button" type="button" onClick={() => void clearLocalData()} disabled={isClearing}>{isClearing ? "正在清除…" : "清除本地数据"}</button>
           <div className="avatar">O</div>
         </div>
       </header>
@@ -522,7 +548,7 @@ function App() {
                 <div className="list-actions"><Store size={15} /> {presetName(appliedFilters.creators)} 达人 · {presetName(appliedFilters.videos)} 视频</div>
               </div>
               <div className="table-wrap">
-                <table>
+                <table className="product-table">
                   <thead>
                     <tr>
                       <th className="product-column">商品</th>

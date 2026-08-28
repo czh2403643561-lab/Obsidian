@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { parseShopWorkbook } from "./parser";
 import SellerRankBoard from "./SellerRankBoard";
+import { usePersistedState } from "./persistence";
 import type { PercentilePreset, Shop, ShopFilters, ShopSortField, SortDirection } from "./types";
 import { formatCompact, formatCount, getPercentileThresholds, presetThreshold } from "./utils";
 
@@ -35,6 +36,28 @@ const initialFilters: ShopFilters = {
   creators: "all",
   videos: "all",
 };
+
+interface SmallShopWorkspaceState {
+  shops: Shop[];
+  fileName: string;
+  importedAt: string;
+  draftFilters: ShopFilters;
+  appliedFilters: ShopFilters;
+  sort: { field: ShopSortField; direction: SortDirection };
+  parseNotice: string;
+  foundHeaderCount: number;
+}
+
+const initialWorkspaceState = (): SmallShopWorkspaceState => ({
+  shops: [],
+  fileName: "",
+  importedAt: "",
+  draftFilters: { ...initialFilters },
+  appliedFilters: { ...initialFilters },
+  sort: { field: "recentSales", direction: "desc" },
+  parseNotice: "",
+  foundHeaderCount: 0,
+});
 
 const sortLabels: Record<ShopSortField, string> = {
   rating: "店铺评分",
@@ -116,16 +139,11 @@ function ShopSortButton({
 
 function SmallShopList({ hidden }: { hidden: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [fileName, setFileName] = useState("");
-  const [draftFilters, setDraftFilters] = useState<ShopFilters>(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState<ShopFilters>(initialFilters);
-  const [sort, setSort] = useState<{ field: ShopSortField; direction: SortDirection }>({ field: "recentSales", direction: "desc" });
+  const [workspace, setWorkspace] = usePersistedState<SmallShopWorkspaceState>("small-shops", initialWorkspaceState);
+  const { shops, fileName, draftFilters, appliedFilters, sort, parseNotice, foundHeaderCount } = workspace;
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [parseNotice, setParseNotice] = useState("");
-  const [foundHeaderCount, setFoundHeaderCount] = useState(0);
 
   const thresholds = useMemo(() => ({
     creators: getPercentileThresholds(shops, "creators"),
@@ -172,25 +190,28 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
   }, [appliedFilters, shops, sort, thresholds]);
 
   const updateFilter = <K extends keyof ShopFilters>(key: K, value: ShopFilters[K]) => {
-    setDraftFilters((current) => ({ ...current, [key]: value }));
+    setWorkspace((current) => ({ ...current, draftFilters: { ...current.draftFilters, [key]: value } }));
   };
 
   const loadFile = async (file?: File) => {
     if (!file) return;
     setError("");
-    setParseNotice("");
     setIsLoading(true);
     try {
       const result = await parseShopWorkbook(file);
-      setShops(result.shops);
-      setFileName(file.name);
-      setFoundHeaderCount(result.foundHeaders.length);
-      setDraftFilters({ ...initialFilters });
-      setAppliedFilters({ ...initialFilters });
       const notices: string[] = [];
       if (result.missingHeaders.length) notices.push(`未找到字段：${result.missingHeaders.join("、")}，对应数据将显示为 —`);
       if (result.skippedRows) notices.push(`已跳过 ${result.skippedRows} 行缺少店铺名称或有效链接的数据`);
-      setParseNotice(notices.join("；"));
+      setWorkspace({
+        shops: result.shops,
+        fileName: file.name,
+        importedAt: new Date().toISOString(),
+        draftFilters: { ...initialFilters },
+        appliedFilters: { ...initialFilters },
+        sort: { field: "recentSales", direction: "desc" },
+        parseNotice: notices.join("；"),
+        foundHeaderCount: result.foundHeaders.length,
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "文件解析失败，请检查文件后重试。");
     } finally {
@@ -199,10 +220,7 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
     }
   };
 
-  const handleSort = (field: ShopSortField) => setSort((current) => ({
-    field,
-    direction: current.field === field && current.direction === "desc" ? "asc" : "desc",
-  }));
+  const handleSort = (field: ShopSortField) => setWorkspace((current) => ({ ...current, sort: { field, direction: current.sort.field === field && current.sort.direction === "desc" ? "asc" : "desc" } }));
 
   const hasDraftChanges = !filtersEqual(draftFilters, appliedFilters);
   const appliedFiltersActive = hasActiveFilters(appliedFilters);
@@ -255,8 +273,8 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
             <div className="filter-title"><Filter size={17} /><strong>筛选条件</strong><span>{appliedFiltersActive ? "已启用组合筛选" : "全部店铺"}</span></div>
             <div className="filter-card-actions">
               {hasDraftChanges && <span className="pending-filter-note">条件已修改，点击应用筛选生效</span>}
-              <button className="apply-button" onClick={() => setAppliedFilters({ ...draftFilters })} disabled={!hasDraftChanges}><Check size={15} /> 应用筛选</button>
-              {hasAnyFilterValues && <button className="text-button" onClick={() => { setDraftFilters({ ...initialFilters }); setAppliedFilters({ ...initialFilters }); }}><RefreshCw size={14} /> 清除筛选</button>}
+              <button className="apply-button" onClick={() => setWorkspace((current) => ({ ...current, appliedFilters: { ...current.draftFilters } }))} disabled={!hasDraftChanges}><Check size={15} /> 应用筛选</button>
+              {hasAnyFilterValues && <button className="text-button" onClick={() => setWorkspace((current) => ({ ...current, draftFilters: { ...initialFilters }, appliedFilters: { ...initialFilters } }))}><RefreshCw size={14} /> 清除筛选</button>}
             </div>
           </div>
           <div className="filter-grid shop-filter-grid">
@@ -275,8 +293,8 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
         <section className="list-card">
           <div className="list-card-header"><div><div className="list-heading"><h2>店铺榜单</h2><span className="result-pill">{formatCount(filteredShops.length)} 个结果</span></div><p>点击店铺名称打开 EchoTik 原店铺页</p></div><div className="list-actions"><Store size={15} /> {presetName(appliedFilters.creators)} 达人 · {presetName(appliedFilters.videos)} 视频</div></div>
           <div className="table-wrap"><table className="shop-table"><thead><tr><th className="shop-name-column">店铺</th><th>店铺类型</th><th>地区</th><th><ShopSortButton field="rating" sort={sort} onSort={handleSort} /></th><th><ShopSortButton field="recentSales" sort={sort} onSort={handleSort} /></th><th><ShopSortButton field="totalSales" sort={sort} onSort={handleSort} /></th><th><ShopSortButton field="recentGmv" sort={sort} onSort={handleSort} /></th><th>带货 / 在店商品</th><th><ShopSortButton field="creators" sort={sort} onSort={handleSort} /></th><th><ShopSortButton field="videos" sort={sort} onSort={handleSort} /></th><th><ShopSortButton field="lives" sort={sort} onSort={handleSort} /></th></tr></thead>
-            <tbody>{filteredShops.map((shop) => <tr key={`${shop.id}-${shop.url}`}><td className="shop-name-column"><a className="shop-name-link" href={shop.url} target="_blank" rel="noreferrer"><span className="shop-avatar"><Store size={17} /></span><span><strong title={shop.name}>{shop.name}</strong><small>{shop.deliveryCategory || "未填写分类"}</small></span></a></td><td><div className="shop-cell"><span>{shop.shopType}</span><small>{shop.managed ? `全托管：${shop.managed}` : "全托管：—"}</small></div></td><td><span className="metric-value">{shop.region}</span></td><td><span className="rating-badge">{shop.rating ? shop.rating.toFixed(1) : "—"}</span></td><td><span className="metric-value highlight">{formatCompact(shop.recentSales)}</span><small className="metric-label">近 7 天</small></td><td><span className="metric-value">{formatCompact(shop.totalSales)}</span><small className="metric-label">累计销量</small></td><td><span className="metric-value">£{formatCompact(shop.recentGmv)}</span><small className="metric-label">近 7 天</small></td><td><span className="metric-value">{formatCompact(shop.promotedProductCount)}</span><small className="metric-label">在店 {formatCompact(shop.totalProducts)}</small></td><td><span className="metric-value">{formatCount(shop.creators)}</span></td><td><span className="metric-value">{formatCount(shop.videos)}</span></td><td><span className="metric-value">{formatCount(shop.lives)}</span></td></tr>)}</tbody></table>
-            {!filteredShops.length && <div className="no-results"><div className="empty-icon small"><Search size={20} /></div><strong>没有符合条件的店铺</strong><span>尝试放宽筛选范围，或清除筛选重新查看。</span><button className="text-button" onClick={() => { setDraftFilters({ ...initialFilters }); setAppliedFilters({ ...initialFilters }); }}>清除筛选</button></div>}
+            <tbody>{filteredShops.map((shop) => <tr key={`${shop.id}-${shop.url}`}><td className="shop-name-column"><a className="shop-name-link" href={shop.url} target="_blank" rel="noreferrer"><span className="shop-avatar"><Store size={17} /></span><span><strong title={shop.name}>{shop.name}</strong><small>{shop.deliveryCategory || "未填写分类"}</small></span></a></td><td><div className="shop-cell"><span>{shop.shopType}</span><small>{shop.managed ? `全托管：${shop.managed}` : "全托管：—"}</small></div></td><td><span className="metric-value">{shop.region}</span></td><td><span className="rating-badge">{shop.rating ? shop.rating.toFixed(1) : "—"}</span></td><td><span className="metric-value highlight">{formatCompact(shop.recentSales)}</span><small className="metric-label">近 7 天</small></td><td><span className="metric-value">{formatCompact(shop.totalSales)}</span><small className="metric-label">累计销量</small></td><td><span className="metric-value amount-value">£{formatCompact(shop.recentGmv)}</span><small className="metric-label">近 7 天</small></td><td><span className="metric-value">{formatCompact(shop.promotedProductCount)}</span><small className="metric-label">在店 {formatCompact(shop.totalProducts)}</small></td><td><span className="metric-value">{formatCount(shop.creators)}</span></td><td><span className="metric-value">{formatCount(shop.videos)}</span></td><td><span className="metric-value">{formatCount(shop.lives)}</span></td></tr>)}</tbody></table>
+            {!filteredShops.length && <div className="no-results"><div className="empty-icon small"><Search size={20} /></div><strong>没有符合条件的店铺</strong><span>尝试放宽筛选范围，或清除筛选重新查看。</span><button className="text-button" onClick={() => setWorkspace((current) => ({ ...current, draftFilters: { ...initialFilters }, appliedFilters: { ...initialFilters } }))}>清除筛选</button></div>}
           </div>
         </section>
       </>}
@@ -295,7 +313,8 @@ const shopViewLabels: Record<ShopView, string> = {
 };
 
 export default function ShopBoard({ hidden = false }: { hidden?: boolean }) {
-  const [activeView, setActiveView] = useState<ShopView>("shops");
+  const [shopNavigation, setShopNavigation] = usePersistedState<{ activeView: ShopView }>("shop-navigation", () => ({ activeView: "shops" }));
+  const activeView = shopNavigation.activeView;
   return (
     <main id="shops-workspace" className="workspace" hidden={hidden} aria-hidden={hidden}>
       <section className="page-heading">
@@ -307,7 +326,7 @@ export default function ShopBoard({ hidden = false }: { hidden?: boolean }) {
         <div className="privacy-note"><CheckCircle2 size={16} /> 文件仅在浏览器本地解析</div>
       </section>
       <section className="board-switcher" aria-label="店铺榜单数据类型">
-        {(Object.keys(shopViewLabels) as ShopView[]).map((view) => <button key={view} type="button" className={activeView === view ? "active" : ""} onClick={() => setActiveView(view)}>{shopViewLabels[view]}</button>)}
+        {(Object.keys(shopViewLabels) as ShopView[]).map((view) => <button key={view} type="button" className={activeView === view ? "active" : ""} onClick={() => setShopNavigation({ activeView: view })}>{shopViewLabels[view]}</button>)}
       </section>
       <SmallShopList hidden={activeView !== "shops"} />
       <SellerRankBoard kind="crossborder" hidden={activeView !== "crossborder"} />
