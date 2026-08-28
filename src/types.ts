@@ -52,3 +52,57 @@ export interface ParseResult {
   missingHeaders: string[];
   skippedRows: number;
 }
+
+export type ShopSortField =
+  | "rating"
+  | "recentSales"
+  | "totalSales"
+  | "recentGmv"
+  | "creators"
+  | "videos"
+  | "lives";
+
+export interface Shop {
+  id: string;
+  url: string;
+  name: string;
+  deliveryCategory: string;
+  managed: string;
+  shopType: string;
+  region: string;
+  rating: number;
+  promotedProductCount: number;
+  totalProducts: number;
+  averagePrice: number;
+  recentSales: number;
+  totalSales: number;
+  recentGmv: number;
+  totalGmv: number;
+  creators: number;
+  videos: number;
+  lives: number;
+  collectedAt: string;
+}
+
+export interface ShopFilters {
+  recentMin: string;
+  recentMax: string;
+  totalMin: string;
+  totalMax: string;
+  recentGmvMin: string;
+  recentGmvMax: string;
+  ratingMin: string;
+  ratingMax: string;
+  shopType: string;
+  managed: "all" | "是" | "否";
+  creators: PercentilePreset;
+  videos: PercentilePreset;
+}
+
+export interface ShopParseResult {
+  shops: Shop[];
+  headerRow: number;
+  foundHeaders: string[];
+  missingHeaders: string[];
+  skippedRows: number;
+}

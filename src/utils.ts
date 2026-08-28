@@ -1,4 +1,4 @@
-import type { PercentilePreset, PercentileThresholds, Product } from "./types";
+import type { PercentilePreset, PercentileThresholds, Product, Shop } from "./types";
 
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
 const decimalFormatter = new Intl.NumberFormat("en-GB", {
@@ -30,8 +30,11 @@ export const percentile = (values: number[], percentage: number): number => {
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
 };
 
-export const getPercentileThresholds = (products: Product[], field: "creators" | "videos"): PercentileThresholds => {
-  const values = products.map((product) => product[field]);
+export const getPercentileThresholds = (
+  records: Array<Product | Shop>,
+  field: "creators" | "videos",
+): PercentileThresholds => {
+  const values = records.map((record) => record[field]);
   return {
     p15: percentile(values, 15),
     p20: percentile(values, 20),

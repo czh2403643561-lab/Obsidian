@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import type { ParseResult, Product } from "./types";
+import type { ParseResult, Product, Shop, ShopParseResult } from "./types";
 
 export const TRACKED_HEADERS = [
   "商品Id",
@@ -25,6 +25,30 @@ export const TRACKED_HEADERS = [
 ];
 
 const REQUIRED_HEADERS = ["商品Id", "TikTok商品链接", "商品名称"];
+
+export const SHOP_TRACKED_HEADERS = [
+  "店铺名称",
+  "Unique Id",
+  "带货分类",
+  "全托管",
+  "店铺类型",
+  "地区",
+  "店铺评分",
+  "带货商品数",
+  "在店商品总数",
+  "商品均价",
+  "近7天销量",
+  "总销量",
+  "近7天GMV(￡)",
+  "总销售额(￡)",
+  "总达人数",
+  "视频数",
+  "直播数",
+  "采集时间",
+  "查看更多",
+];
+
+const SHOP_REQUIRED_HEADERS = ["店铺名称", "近7天销量", "总销量", "查看更多"];
 
 const textValue = (value: unknown): string =>
   String(value ?? "")
@@ -71,28 +95,34 @@ const parseRate = (value: unknown): number => {
   return source.includes("%") || parsed > 1 ? parsed : parsed * 100;
 };
 
-const findHeaderRow = (rows: unknown[][]): number => {
+const findHeaderRow = (rows: unknown[][], trackedHeaders: string[], requiredHeaders: string[], description: string): number => {
   let bestRow = -1;
   let bestScore = 0;
 
   rows.slice(0, 12).forEach((row, index) => {
     const headers = new Set(row.map(textValue));
-    const score = TRACKED_HEADERS.reduce((total, header) => total + (headers.has(header) ? 1 : 0), 0);
+    const score = trackedHeaders.reduce((total, header) => total + (headers.has(header) ? 1 : 0), 0);
     if (score > bestScore) {
       bestScore = score;
       bestRow = index;
     }
   });
 
-  if (bestRow < 0 || bestScore < REQUIRED_HEADERS.length) {
-    throw new Error("无法识别 EchoTik 商品列表表头，请确认第 2 行是商品字段表头。");
+  if (bestRow < 0 || bestScore < requiredHeaders.length) {
+    throw new Error(`无法识别 EchoTik ${description}表头，请确认第 2 行是字段表头。`);
   }
   return bestRow;
 };
 
 const normalizeUrl = (value: unknown): string => {
-  const url = textValue(value);
+  const url = textValue(value).replace(/&amp;/gi, "&");
   return /^https?:\/\//i.test(url) ? url : "";
+};
+
+const cellHyperlink = (sheet: XLSX.WorkSheet, row: number, column: number | undefined): string => {
+  if (column === undefined) return "";
+  const address = XLSX.utils.encode_cell({ r: row, c: column });
+  return normalizeUrl(sheet[address]?.l?.Target);
 };
 
 export const parseProductWorkbook = async (file: File): Promise<ParseResult> => {
@@ -116,7 +146,7 @@ export const parseProductWorkbook = async (file: File): Promise<ParseResult> => 
     defval: "",
     raw: true,
   }) as unknown[][];
-  const headerRow = findHeaderRow(rows);
+  const headerRow = findHeaderRow(rows, TRACKED_HEADERS, REQUIRED_HEADERS, "商品列表");
   const headers = rows[headerRow].map(textValue);
   const columns = new Map<string, number>();
   headers.forEach((header, index) => {
@@ -170,6 +200,101 @@ export const parseProductWorkbook = async (file: File): Promise<ParseResult> => 
     products,
     headerRow,
     foundHeaders: TRACKED_HEADERS.filter((header) => columns.has(header)),
+    missingHeaders,
+    skippedRows,
+  };
+};
+
+const normalizeManaged = (value: unknown): string => {
+  const source = textValue(value);
+  const normalized = source.toLowerCase();
+  if (["是", "yes", "true", "1"].includes(normalized)) return "是";
+  if (["否", "no", "false", "0"].includes(normalized)) return "否";
+  return source;
+};
+
+export const parseShopWorkbook = async (file: File): Promise<ShopParseResult> => {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (!extension || !['xlsx', 'xls'].includes(extension)) {
+    throw new Error("请选择 .xlsx 或 .xls 格式的 EchoTik 小店列表文件。");
+  }
+
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+  } catch {
+    throw new Error("文件读取失败，请重新导出或选择有效的 Excel 文件。");
+  }
+
+  const firstSheet = workbook.SheetNames[0];
+  if (!firstSheet) throw new Error("Excel 中没有可读取的工作表。");
+
+  const sheet = workbook.Sheets[firstSheet];
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    raw: true,
+  }) as unknown[][];
+  const headerRow = findHeaderRow(rows, SHOP_TRACKED_HEADERS, SHOP_REQUIRED_HEADERS, "小店列表");
+  const headers = rows[headerRow].map(textValue);
+  const columns = new Map<string, number>();
+  headers.forEach((header, index) => {
+    if (header && !columns.has(header)) columns.set(header, index);
+  });
+
+  const missingRequired = SHOP_REQUIRED_HEADERS.filter((header) => !columns.has(header));
+  if (missingRequired.length) {
+    throw new Error(`缺少关键字段：${missingRequired.join("、")}`);
+  }
+
+  const missingHeaders = SHOP_TRACKED_HEADERS.filter((header) => !columns.has(header));
+  let skippedRows = 0;
+  const shops: Shop[] = [];
+
+  rows.slice(headerRow + 1).forEach((row, index) => {
+    const sheetRow = headerRow + index + 1;
+    const name = textValue(columnValue(row, columns, "店铺名称"));
+    const url =
+      cellHyperlink(sheet, sheetRow, columns.get("店铺名称")) ||
+      cellHyperlink(sheet, sheetRow, columns.get("查看更多")) ||
+      normalizeUrl(columnValue(row, columns, "查看更多"));
+    if (!name && !url) return;
+    if (!name || !url) {
+      skippedRows += 1;
+      return;
+    }
+
+    shops.push({
+      id: textValue(columnValue(row, columns, "Unique Id")) || `shop-row-${index + 1}`,
+      url,
+      name,
+      deliveryCategory: textValue(columnValue(row, columns, "带货分类")),
+      managed: normalizeManaged(columnValue(row, columns, "全托管")),
+      shopType: textValue(columnValue(row, columns, "店铺类型")) || "未填写",
+      region: textValue(columnValue(row, columns, "地区")) || "未填写",
+      rating: parseMetric(columnValue(row, columns, "店铺评分")),
+      promotedProductCount: parseMetric(columnValue(row, columns, "带货商品数")),
+      totalProducts: parseMetric(columnValue(row, columns, "在店商品总数")),
+      averagePrice: parseMetric(columnValue(row, columns, "商品均价")),
+      recentSales: parseMetric(columnValue(row, columns, "近7天销量")),
+      totalSales: parseMetric(columnValue(row, columns, "总销量")),
+      recentGmv: parseMetric(columnValue(row, columns, "近7天GMV(￡)")),
+      totalGmv: parseMetric(columnValue(row, columns, "总销售额(￡)")),
+      creators: parseMetric(columnValue(row, columns, "总达人数")),
+      videos: parseMetric(columnValue(row, columns, "视频数")),
+      lives: parseMetric(columnValue(row, columns, "直播数")),
+      collectedAt: textValue(columnValue(row, columns, "采集时间")),
+    });
+  });
+
+  if (!shops.length) {
+    throw new Error("没有找到带 EchoTik 店铺链接的有效数据，请确认文件是小店列表导出文件。");
+  }
+
+  return {
+    shops,
+    headerRow,
+    foundHeaders: SHOP_TRACKED_HEADERS.filter((header) => columns.has(header)),
     missingHeaders,
     skippedRows,
   };

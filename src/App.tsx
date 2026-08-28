@@ -14,8 +14,6 @@ import {
   Filter,
   Image as ImageIcon,
   LayoutDashboard,
-  Link2,
-  ListFilter,
   PackageSearch,
   RefreshCw,
   Search,
@@ -24,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { parseProductWorkbook } from "./parser";
+import ShopBoard from "./ShopBoard";
 import type {
   Filters,
   PercentilePreset,
@@ -175,6 +174,7 @@ function EmptyState({ onPick }: { onPick: () => void }) {
 }
 
 function App() {
+  const [activeModule, setActiveModule] = useState<"products" | "shops">("products");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [fileName, setFileName] = useState("");
@@ -287,9 +287,8 @@ function App() {
           </div>
         </div>
         <nav className="topnav" aria-label="主导航">
-          <a className="active" href="#workspace"><LayoutDashboard size={16} /> 商品分析</a>
-          <a href="#workspace"><ListFilter size={16} /> 商品列表</a>
-          <a href="#workspace"><Link2 size={16} /> 数据导入</a>
+          <button type="button" className={activeModule === "products" ? "active" : ""} onClick={() => setActiveModule("products")}><LayoutDashboard size={16} /> 商品列表</button>
+          <button type="button" className={activeModule === "shops" ? "active" : ""} onClick={() => setActiveModule("shops")}><Store size={16} /> 店铺榜单</button>
         </nav>
         <div className="topbar-right">
           <div className="local-badge"><span className="status-dot" /> 本地工作区</div>
@@ -297,7 +296,7 @@ function App() {
         </div>
       </header>
 
-      <main id="workspace" className={`workspace${products.length > 0 ? " work-mode" : ""}`}>
+      {activeModule === "products" ? <main id="workspace" className={`workspace${products.length > 0 ? " work-mode" : ""}`}>
         <section className="page-heading">
           <div>
             <div className="eyebrow"><span className="eyebrow-line" /> PRODUCT DISCOVERY</div>
@@ -515,8 +514,8 @@ function App() {
         )}
 
         {!products.length && !error && <EmptyState onPick={() => fileInputRef.current?.click()} />}
-      </main>
-      <footer className="footer"><span>Obsidian 商品选品工作台</span><span>EchoTik 商品列表 · 本地解析</span></footer>
+      </main> : <ShopBoard />}
+      <footer className="footer"><span>Obsidian 选品工作台</span><span>EchoTik 数据 · 本地解析</span></footer>
     </div>
   );
 }
