@@ -109,3 +109,40 @@ export interface ShopParseResult {
   missingHeaders: string[];
   skippedRows: number;
 }
+
+export type SellerRankSortField = "salesAmount" | "sales" | "promotedProductCount" | "creators" | "videos" | "lives";
+
+export interface SellerRank {
+  id: string;
+  url: string;
+  name: string;
+  deliveryCategory: string;
+  region: string;
+  salesAmount: number;
+  sales: number;
+  promotedProductCount: number;
+  creators: number;
+  videos: number;
+  lives: number;
+  collectedAt: string;
+}
+
+export interface SellerRankFilters {
+  salesAmountMin: string;
+  salesAmountMax: string;
+  salesMin: string;
+  salesMax: string;
+  productsMin: string;
+  productsMax: string;
+  category: string;
+  creators: PercentilePreset;
+  videos: PercentilePreset;
+}
+
+export interface SellerRankParseResult {
+  sellers: SellerRank[];
+  headerRow: number;
+  foundHeaders: string[];
+  missingHeaders: string[];
+  skippedRows: number;
+}

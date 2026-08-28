@@ -71,6 +71,10 @@ a { color: inherit; text-decoration: none; }
 .period-tab.active { color: var(--purple); background: white; box-shadow: 0 2px 7px rgba(54, 45, 135, .12); }
 .period-tab.active small { color: #8379e9; }
 .period-tab:not(.available) small { color: #aeb5c3; }
+.board-switcher { display: flex; align-items: center; width: fit-content; margin: -2px 0 12px; padding: 3px; background: #eceaf8; border-radius: 10px; }
+.board-switcher button { min-width: 104px; padding: 8px 12px; color: #7f899d; background: transparent; border: 0; border-radius: 7px; font-size: 12px; font-weight: 650; transition: .18s; }
+.board-switcher button:hover { color: var(--purple); }
+.board-switcher button.active { color: var(--purple); background: white; box-shadow: 0 2px 7px rgba(54, 45, 135, .12); }
 
 .import-card, .source-bar, .filter-card, .list-card, .overview-grid { background: white; border: 1px solid #e9ecf4; box-shadow: 0 10px 30px rgba(38, 54, 88, .045); }
 .import-card { min-height: 122px; display: flex; align-items: center; justify-content: space-between; gap: 25px; padding: 23px 27px; border-radius: 15px; }
@@ -188,6 +192,11 @@ th:not(.product-column):not(.action-column), td:not(.product-column):not(.action
 .shop-table th, .shop-table td { height: 82px; }
 .shop-name-column { width: 24%; padding-left: 21px; }
 .shop-table th:not(.shop-name-column), .shop-table td:not(.shop-name-column) { width: 7.6%; }
+.seller-filter-grid { grid-template-columns: repeat(3, 1fr); }
+.seller-table th, .seller-table td { height: 82px; }
+.seller-name-column { width: 24%; padding-left: 21px; }
+.seller-table th:not(.seller-name-column), .seller-table td:not(.seller-name-column) { width: 9.5%; }
+.seller-category { display: block; overflow: hidden; color: #59657d; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .shop-name-link { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .shop-name-link:hover strong { color: var(--purple); }
 .shop-name-link > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 6px; }

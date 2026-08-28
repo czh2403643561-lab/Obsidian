@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import type { ParseResult, Product, ProductPeriod, Shop, ShopParseResult } from "./types";
+import type { ParseResult, Product, ProductPeriod, SellerRank, SellerRankParseResult, Shop, ShopParseResult } from "./types";
 
 const PRODUCT_COMMON_HEADERS = [
   "商品Id",
@@ -55,6 +55,22 @@ export const SHOP_TRACKED_HEADERS = [
 
 const SHOP_REQUIRED_HEADERS = ["店铺名称", "近7天销量", "总销量", "查看更多"];
 const SHOP_IDENTITY_HEADERS = ["Unique Id", "地区", "店铺评分", "带货商品数", "在店商品总数", "总达人数", "直播数", "采集时间"];
+
+export const SELLER_RANK_TRACKED_HEADERS = [
+  "店铺名称",
+  "带货分类",
+  "地区",
+  "销售额(￡)",
+  "销量",
+  "带货商品数",
+  "达人",
+  "视频数",
+  "直播数",
+  "采集时间",
+  "查看更多",
+];
+
+const SELLER_RANK_REQUIRED_HEADERS = ["店铺名称", "销售额(￡)", "销量", "带货商品数", "达人", "视频数", "查看更多"];
 
 const textValue = (value: unknown): string =>
   String(value ?? "")
@@ -319,6 +335,91 @@ export const parseShopWorkbook = async (file: File): Promise<ShopParseResult> =>
     shops,
     headerRow,
     foundHeaders: SHOP_TRACKED_HEADERS.filter((header) => columns.has(header)),
+    missingHeaders,
+    skippedRows,
+  };
+};
+
+export const parseSellerRankWorkbook = async (file: File): Promise<SellerRankParseResult> => {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (!extension || !["xlsx", "xls"].includes(extension)) {
+    throw new Error("请选择 .xlsx 或 .xls 格式的 EchoTik 卖家榜文件。");
+  }
+
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+  } catch {
+    throw new Error("文件读取失败，请重新导出或选择有效的 Excel 文件。");
+  }
+
+  const firstSheet = workbook.SheetNames[0];
+  if (!firstSheet) throw new Error("Excel 中没有可读取的工作表。");
+
+  const sheet = workbook.Sheets[firstSheet];
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    raw: true,
+  }) as unknown[][];
+  let headerRow: number;
+  try {
+    headerRow = findHeaderRow(rows, SELLER_RANK_TRACKED_HEADERS, SELLER_RANK_REQUIRED_HEADERS, "卖家榜");
+  } catch {
+    throw new Error("请选择 EchoTik 卖家榜 Excel，无法识别卖家榜字段表头。");
+  }
+  const headers = rows[headerRow].map(textValue);
+  const columns = new Map<string, number>();
+  headers.forEach((header, index) => {
+    if (header && !columns.has(header)) columns.set(header, index);
+  });
+
+  const missingRequired = SELLER_RANK_REQUIRED_HEADERS.filter((header) => !columns.has(header));
+  if (missingRequired.length) {
+    throw new Error(`请选择 EchoTik 卖家榜 Excel，缺少关键字段：${missingRequired.join("、")}`);
+  }
+
+  const missingHeaders = SELLER_RANK_TRACKED_HEADERS.filter((header) => !columns.has(header));
+  let skippedRows = 0;
+  const sellers: SellerRank[] = [];
+
+  rows.slice(headerRow + 1).forEach((row, index) => {
+    const sheetRow = headerRow + index + 1;
+    const name = textValue(columnValue(row, columns, "店铺名称"));
+    const url =
+      cellHyperlink(sheet, sheetRow, columns.get("店铺名称")) ||
+      cellHyperlink(sheet, sheetRow, columns.get("查看更多")) ||
+      normalizeUrl(columnValue(row, columns, "查看更多"));
+    if (!name && !url) return;
+    if (!name || !url || !isShopUrl(url)) {
+      skippedRows += 1;
+      return;
+    }
+
+    sellers.push({
+      id: `seller-row-${index + 1}`,
+      url,
+      name,
+      deliveryCategory: textValue(columnValue(row, columns, "带货分类")) || "未填写分类",
+      region: textValue(columnValue(row, columns, "地区")) || "未填写",
+      salesAmount: parseMetric(columnValue(row, columns, "销售额(￡)")),
+      sales: parseMetric(columnValue(row, columns, "销量")),
+      promotedProductCount: parseMetric(columnValue(row, columns, "带货商品数")),
+      creators: parseMetric(columnValue(row, columns, "达人")),
+      videos: parseMetric(columnValue(row, columns, "视频数")),
+      lives: parseMetric(columnValue(row, columns, "直播数")),
+      collectedAt: textValue(columnValue(row, columns, "采集时间")),
+    });
+  });
+
+  if (!sellers.length) {
+    throw new Error("请选择 EchoTik 卖家榜 Excel，未找到有效的 EchoTik 店铺链接。");
+  }
+
+  return {
+    sellers,
+    headerRow,
+    foundHeaders: SELLER_RANK_TRACKED_HEADERS.filter((header) => columns.has(header)),
     missingHeaders,
     skippedRows,
   };

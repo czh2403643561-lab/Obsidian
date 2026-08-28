@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { parseShopWorkbook } from "./parser";
+import SellerRankBoard from "./SellerRankBoard";
 import type { PercentilePreset, Shop, ShopFilters, ShopSortField, SortDirection } from "./types";
 import { formatCompact, formatCount, getPercentileThresholds, presetThreshold } from "./utils";
 
@@ -113,7 +114,7 @@ function ShopSortButton({
   );
 }
 
-export default function ShopBoard({ hidden = false }: { hidden?: boolean }) {
+function SmallShopList({ hidden }: { hidden: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [shops, setShops] = useState<Shop[]>([]);
   const [fileName, setFileName] = useState("");
@@ -208,15 +209,7 @@ export default function ShopBoard({ hidden = false }: { hidden?: boolean }) {
   const hasAnyFilterValues = hasActiveFilters(draftFilters) || hasActiveFilters(appliedFilters);
 
   return (
-    <main id="shops-workspace" className={`workspace${shops.length > 0 ? " work-mode" : ""}`} hidden={hidden} aria-hidden={hidden}>
-      <section className="page-heading">
-        <div>
-          <div className="eyebrow"><span className="eyebrow-line" /> SHOP RANKING</div>
-          <h1>店铺榜单</h1>
-          <p>从 EchoTik 小店数据中快速筛选值得进一步关注的店铺。</p>
-        </div>
-        <div className="privacy-note"><CheckCircle2 size={16} /> 文件仅在浏览器本地解析</div>
-      </section>
+    <section className="board-view" hidden={hidden} aria-hidden={hidden}>
 
       {shops.length > 0 ? (
         <section className="source-bar">
@@ -289,6 +282,36 @@ export default function ShopBoard({ hidden = false }: { hidden?: boolean }) {
       </>}
 
       {!shops.length && !error && <div className="empty-state"><div className="empty-icon"><Store size={30} /></div><h2>导入店铺数据，开始筛选</h2><p>支持 EchoTik 导出的小店列表 Excel，文件只在当前浏览器本地解析。</p><button className="primary-button" onClick={() => fileInputRef.current?.click()}><CloudUpload size={17} /> 选择 Excel 文件</button></div>}
+    </section>
+  );
+}
+
+type ShopView = "shops" | "crossborder" | "local";
+
+const shopViewLabels: Record<ShopView, string> = {
+  shops: "小店列表",
+  crossborder: "跨境卖家榜",
+  local: "本土卖家榜",
+};
+
+export default function ShopBoard({ hidden = false }: { hidden?: boolean }) {
+  const [activeView, setActiveView] = useState<ShopView>("shops");
+  return (
+    <main id="shops-workspace" className="workspace" hidden={hidden} aria-hidden={hidden}>
+      <section className="page-heading">
+        <div>
+          <div className="eyebrow"><span className="eyebrow-line" /> SHOP RANKING</div>
+          <h1>{shopViewLabels[activeView]}</h1>
+          <p>{activeView === "shops" ? "从 EchoTik 小店数据中快速筛选值得进一步关注的店铺。" : "导入对应的 EchoTik 卖家榜数据，筛选值得进一步关注的店铺。"}</p>
+        </div>
+        <div className="privacy-note"><CheckCircle2 size={16} /> 文件仅在浏览器本地解析</div>
+      </section>
+      <section className="board-switcher" aria-label="店铺榜单数据类型">
+        {(Object.keys(shopViewLabels) as ShopView[]).map((view) => <button key={view} type="button" className={activeView === view ? "active" : ""} onClick={() => setActiveView(view)}>{shopViewLabels[view]}</button>)}
+      </section>
+      <SmallShopList hidden={activeView !== "shops"} />
+      <SellerRankBoard kind="crossborder" hidden={activeView !== "crossborder"} />
+      <SellerRankBoard kind="local" hidden={activeView !== "local"} />
     </main>
   );
 }
