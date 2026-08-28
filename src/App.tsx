@@ -8,6 +8,7 @@ import {
   ChevronDown,
   CircleHelp,
   CloudUpload,
+  Check,
   ExternalLink,
   FileSpreadsheet,
   Filter,
@@ -70,6 +71,14 @@ const parseInputNumber = (value: string): number | null => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
+
+const filtersEqual = (left: Filters, right: Filters): boolean =>
+  left.totalMin === right.totalMin &&
+  left.totalMax === right.totalMax &&
+  left.recentMin === right.recentMin &&
+  left.recentMax === right.recentMax &&
+  left.creators === right.creators &&
+  left.videos === right.videos;
 
 const sortValue = (product: Product, field: SortField): number => product[field];
 
@@ -169,7 +178,8 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [fileName, setFileName] = useState("");
-  const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [draftFilters, setDraftFilters] = useState<Filters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
   const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({
     field: "recentSales",
     direction: "desc",
@@ -186,12 +196,12 @@ function App() {
   }), [products]);
 
   const filteredProducts = useMemo(() => {
-    const totalMin = parseInputNumber(filters.totalMin);
-    const totalMax = parseInputNumber(filters.totalMax);
-    const recentMin = parseInputNumber(filters.recentMin);
-    const recentMax = parseInputNumber(filters.recentMax);
-    const creatorsThreshold = presetThreshold(filters.creators, thresholds.creators);
-    const videosThreshold = presetThreshold(filters.videos, thresholds.videos);
+    const totalMin = parseInputNumber(appliedFilters.totalMin);
+    const totalMax = parseInputNumber(appliedFilters.totalMax);
+    const recentMin = parseInputNumber(appliedFilters.recentMin);
+    const recentMax = parseInputNumber(appliedFilters.recentMax);
+    const creatorsThreshold = presetThreshold(appliedFilters.creators, thresholds.creators);
+    const videosThreshold = presetThreshold(appliedFilters.videos, thresholds.videos);
 
     return products
       .filter((product) => {
@@ -208,10 +218,10 @@ function App() {
         if (difference !== 0) return sort.direction === "desc" ? -difference : difference;
         return a.name.localeCompare(b.name, "zh-CN");
       });
-  }, [filters, products, sort, thresholds]);
+  }, [appliedFilters, products, sort, thresholds]);
 
   const updateFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
-    setFilters((current) => ({ ...current, [key]: value }));
+    setDraftFilters((current) => ({ ...current, [key]: value }));
   };
 
   const handleSort = (field: SortField) => {
@@ -221,7 +231,12 @@ function App() {
     }));
   };
 
-  const clearFilters = () => setFilters(initialFilters);
+  const applyFilters = () => setAppliedFilters({ ...draftFilters });
+
+  const clearFilters = () => {
+    setDraftFilters({ ...initialFilters });
+    setAppliedFilters({ ...initialFilters });
+  };
 
   const loadFile = async (file?: File) => {
     if (!file) return;
@@ -233,7 +248,8 @@ function App() {
       setProducts(result.products);
       setFileName(file.name);
       setFoundHeaderCount(result.foundHeaders.length);
-      setFilters(initialFilters);
+      setDraftFilters({ ...initialFilters });
+      setAppliedFilters({ ...initialFilters });
       const notices = [];
       if (result.missingHeaders.length) notices.push(`未找到字段：${result.missingHeaders.join("、")}，对应数据将显示为 —`);
       if (result.skippedRows) notices.push(`已跳过 ${result.skippedRows} 行缺少商品名称或有效链接的数据`);
@@ -256,7 +272,9 @@ function App() {
     void loadFile(event.dataTransfer.files[0]);
   };
 
-  const currentFiltersActive = hasActiveFilters(filters);
+  const hasDraftChanges = !filtersEqual(draftFilters, appliedFilters);
+  const appliedFiltersActive = hasActiveFilters(appliedFilters);
+  const hasAnyFilterValues = hasActiveFilters(draftFilters) || hasActiveFilters(appliedFilters);
 
   return (
     <div className="app-shell">
@@ -358,30 +376,34 @@ function App() {
 
             <section className="filter-card">
               <div className="filter-card-header">
-                <div className="filter-title"><Filter size={17} /><strong>筛选条件</strong><span>{currentFiltersActive ? "已启用组合筛选" : "全部商品"}</span></div>
-                {currentFiltersActive && (
-                  <button className="text-button" onClick={clearFilters}><RefreshCw size={14} /> 清除筛选</button>
-                )}
+                <div className="filter-title"><Filter size={17} /><strong>筛选条件</strong><span>{appliedFiltersActive ? "已启用组合筛选" : "全部商品"}</span></div>
+                <div className="filter-card-actions">
+                  {hasDraftChanges && <span className="pending-filter-note">条件已修改，点击应用筛选生效</span>}
+                  <button className="apply-button" onClick={applyFilters} disabled={!hasDraftChanges}><Check size={15} /> 应用筛选</button>
+                  {hasAnyFilterValues && (
+                    <button className="text-button" onClick={clearFilters}><RefreshCw size={14} /> 清除筛选</button>
+                  )}
+                </div>
               </div>
               <div className="filter-grid">
                 <RangeInput
                   label="总销量"
-                  minValue={filters.totalMin}
-                  maxValue={filters.totalMax}
+                  minValue={draftFilters.totalMin}
+                  maxValue={draftFilters.totalMax}
                   onMinChange={(value) => updateFilter("totalMin", value)}
                   onMaxChange={(value) => updateFilter("totalMax", value)}
                 />
                 <RangeInput
                   label="近 7 天销量"
-                  minValue={filters.recentMin}
-                  maxValue={filters.recentMax}
+                  minValue={draftFilters.recentMin}
+                  maxValue={draftFilters.recentMax}
                   onMinChange={(value) => updateFilter("recentMin", value)}
                   onMaxChange={(value) => updateFilter("recentMax", value)}
                 />
                 <div className="filter-block">
                   <label htmlFor="creators-filter">带货达人数 <span className="label-help" title="百分位基于当前导入的全部商品数据计算"><CircleHelp size={13} /></span></label>
                   <div className="select-wrap">
-                    <select id="creators-filter" value={filters.creators} onChange={(event) => updateFilter("creators", event.target.value as PercentilePreset)}>
+                    <select id="creators-filter" value={draftFilters.creators} onChange={(event) => updateFilter("creators", event.target.value as PercentilePreset)}>
                       <option value="all">不限</option>
                       <option value="p15">最低 15% · ≤ {formatCompact(thresholds.creators.p15)}</option>
                       <option value="p20">最低 20% · ≤ {formatCompact(thresholds.creators.p20)}</option>
@@ -393,7 +415,7 @@ function App() {
                 <div className="filter-block">
                   <label htmlFor="videos-filter">视频数 <span className="label-help" title="百分位基于当前导入的全部商品数据计算"><CircleHelp size={13} /></span></label>
                   <div className="select-wrap">
-                    <select id="videos-filter" value={filters.videos} onChange={(event) => updateFilter("videos", event.target.value as PercentilePreset)}>
+                    <select id="videos-filter" value={draftFilters.videos} onChange={(event) => updateFilter("videos", event.target.value as PercentilePreset)}>
                       <option value="all">不限</option>
                       <option value="p15">最低 15% · ≤ {formatCompact(thresholds.videos.p15)}</option>
                       <option value="p20">最低 20% · ≤ {formatCompact(thresholds.videos.p20)}</option>
@@ -412,7 +434,7 @@ function App() {
                   <div className="list-heading"><h2>商品列表</h2><span className="result-pill">{formatCount(filteredProducts.length)} 个结果</span></div>
                   <p>点击图片、名称或右侧入口打开 TikTok 原商品页</p>
                 </div>
-                <div className="list-actions"><Store size={15} /> {presetName(filters.creators)} 达人 · {presetName(filters.videos)} 视频</div>
+                <div className="list-actions"><Store size={15} /> {presetName(appliedFilters.creators)} 达人 · {presetName(appliedFilters.videos)} 视频</div>
               </div>
               <div className="table-wrap">
                 <table>
