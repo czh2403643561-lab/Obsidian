@@ -155,11 +155,12 @@ a { color: inherit; text-decoration: none; }
 .list-heading { display: flex; align-items: center; gap: 9px; }
 .list-heading h2 { margin: 0; color: var(--ink); font-size: 17px; letter-spacing: -.03em; }
 .result-pill { padding: 4px 8px; color: var(--purple); background: var(--purple-soft); border-radius: 5px; font-size: 10px; font-weight: 650; }
-.region-pill { padding: 4px 8px; color: #667187; background: #f3f4f8; border: 1px solid #e5e8f0; border-radius: 5px; font-size: 10px; font-weight: 650; white-space: nowrap; }
-.shop-list-card-header { padding: 24px 27px 20px; }
+.shop-list-card-header { padding: 25px 28px 22px; }
+.shop-list-card .list-heading { gap: 10px; }
 .shop-list-card .list-heading h2 { font-size: 20px; font-weight: 700; letter-spacing: -.035em; }
-.shop-list-card .result-pill, .shop-list-card .region-pill { min-height: 29px; display: inline-flex; align-items: center; padding: 0 10px; font-size: 11px; font-weight: 700; }
-.shop-list-card .region-pill { color: #56627a; background: #f1f3f8; border-color: #d8deea; }
+.shop-list-card .result-pill { min-height: 27px; display: inline-flex; align-items: center; padding: 0 9px; font-size: 11px; font-weight: 700; }
+.market-badge { height: 36px; display: inline-flex; align-items: center; gap: 7px; padding: 0 13px; color: var(--purple-dark); background: var(--purple-soft); border: 1px solid #cbc5ff; border-radius: 9px; box-shadow: 0 3px 8px rgba(102, 89, 238, .1); font-size: 14px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+.market-badge svg { color: var(--purple); }
 .list-card-header p { margin: 7px 0 0; color: #9ca5b7; font-size: 11px; }
 .list-actions { display: flex; align-items: center; gap: 7px; color: #9ca5b7; font-size: 11px; }
 .list-actions svg { color: var(--purple); }
@@ -202,26 +203,23 @@ tbody tr:last-child td { border-bottom: 0; }
 .shop-table, .seller-table { min-width: 0; }
 .shop-table th, .shop-table td, .seller-table th, .seller-table td { height: 82px; }
 .shop-name-column, .seller-name-column { padding-left: 21px; }
-.shop-col-name { width: 22%; }
-.shop-col-type { width: 11%; }
+.shop-col-name { width: 20%; }
+.shop-col-type { width: 12%; }
 .shop-col-rating { width: 7%; }
 .shop-col-recent-sales, .shop-col-total-sales { width: 10%; }
-.shop-col-gmv { width: 11%; }
-.shop-col-products { width: 9%; }
+.shop-col-gmv { width: 10%; }
+.shop-col-products { width: 11%; }
 .shop-col-creators, .shop-col-videos { width: 7%; }
 .shop-col-lives { width: 6%; }
-.seller-col-name { width: 20%; }
-.seller-col-category { width: 14%; }
-.seller-col-sales-amount { width: 15%; }
-.seller-col-sales { width: 13%; }
-.seller-col-products { width: 14%; }
-.seller-col-creators, .seller-col-videos, .seller-col-lives { width: 8%; }
+.seller-col-name { width: 22%; }
+.seller-col-category { width: 12%; }
+.seller-col-sales-amount, .seller-col-sales, .seller-col-products, .seller-col-creators, .seller-col-videos, .seller-col-lives { width: 11%; }
 .seller-category { display: block; overflow: hidden; color: #59657d; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .product-table th:nth-child(n+3):nth-child(-n+8), .product-table td:nth-child(n+3):nth-child(-n+8) { text-align: right; font-variant-numeric: tabular-nums; }
 .product-table th:nth-child(n+3):nth-child(-n+8) .sort-button { justify-content: flex-end; width: 100%; }
-.shop-number-column, .seller-number-column { padding-right: 12px; padding-left: 12px; text-align: right; font-variant-numeric: tabular-nums; }
-.shop-number-column .sort-button, .seller-number-column .sort-button { justify-content: flex-end; width: 100%; }
-.shop-table .shop-number-column:last-child, .seller-table .seller-number-column:last-child { padding-right: 20px; }
+.shop-number-column, .seller-number-column { padding-right: 10px; padding-left: 10px; text-align: center; font-variant-numeric: tabular-nums; }
+.shop-number-column .sort-button, .seller-number-column .sort-button { justify-content: center; width: 100%; }
+.shop-number-column .metric-value, .shop-number-column .metric-label, .seller-number-column .metric-value { text-align: center; }
 .shop-name-link { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .shop-name-link:hover strong { color: var(--purple); }
 .shop-name-link > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
