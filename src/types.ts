@@ -10,6 +10,8 @@ export type SortDirection = "asc" | "desc";
 
 export type PercentilePreset = "all" | "p15" | "p20" | "p50";
 
+export type ProductPeriod = "7d" | "30d";
+
 export interface Product {
   id: string;
   url: string;
@@ -47,6 +49,7 @@ export interface PercentileThresholds {
 
 export interface ParseResult {
   products: Product[];
+  period: ProductPeriod;
   headerRow: number;
   foundHeaders: string[];
   missingHeaders: string[];

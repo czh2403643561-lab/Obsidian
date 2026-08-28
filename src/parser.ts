@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
-import type { ParseResult, Product, Shop, ShopParseResult } from "./types";
+import type { ParseResult, Product, ProductPeriod, Shop, ShopParseResult } from "./types";
 
-export const TRACKED_HEADERS = [
+const PRODUCT_COMMON_HEADERS = [
   "商品Id",
   "TikTok商品链接",
   "商品名称",
@@ -14,8 +14,6 @@ export const TRACKED_HEADERS = [
   "商品评分",
   "评论数",
   "价格",
-  "近7天销量",
-  "近7天GMV(￡)",
   "总销量",
   "总销售额(￡)",
   "带货达人数",
@@ -23,6 +21,13 @@ export const TRACKED_HEADERS = [
   "佣金率",
   "预估上架时间",
 ];
+
+const PRODUCT_PERIOD_HEADERS: Record<ProductPeriod, [string, string]> = {
+  "7d": ["近7天销量", "近7天GMV(￡)"],
+  "30d": ["近30天销量", "近30天GMV(￡)"],
+};
+
+export const TRACKED_HEADERS = [...PRODUCT_COMMON_HEADERS, ...PRODUCT_PERIOD_HEADERS["7d"], ...PRODUCT_PERIOD_HEADERS["30d"]];
 
 const REQUIRED_HEADERS = ["商品Id", "TikTok商品链接", "商品名称"];
 
@@ -158,7 +163,17 @@ export const parseProductWorkbook = async (file: File): Promise<ParseResult> => 
     throw new Error(`缺少关键字段：${missingRequired.join("、")}`);
   }
 
-  const missingHeaders = TRACKED_HEADERS.filter((header) => !columns.has(header));
+  const has7d = columns.has(PRODUCT_PERIOD_HEADERS["7d"][0]);
+  const has30d = columns.has(PRODUCT_PERIOD_HEADERS["30d"][0]);
+  if (has7d && has30d) {
+    throw new Error("同时识别到近7天和近30天销量字段，无法确定当前商品数据周期。");
+  }
+  if (!has7d && !has30d) {
+    throw new Error("缺少近7天销量或近30天销量字段，无法识别商品数据周期。");
+  }
+  const period: ProductPeriod = has7d ? "7d" : "30d";
+  const [recentSalesHeader, recentGmvHeader] = PRODUCT_PERIOD_HEADERS[period];
+  const missingHeaders = [...PRODUCT_COMMON_HEADERS, ...PRODUCT_PERIOD_HEADERS[period]].filter((header) => !columns.has(header));
   let skippedRows = 0;
   const products: Product[] = [];
 
@@ -179,8 +194,8 @@ export const parseProductWorkbook = async (file: File): Promise<ParseResult> => 
       shopName: textValue(columnValue(row, columns, "店铺名称")) || "未填写店铺",
       category: textValue(columnValue(row, columns, "分类")),
       price: parseMetric(columnValue(row, columns, "价格")),
-      recentSales: parseMetric(columnValue(row, columns, "近7天销量")),
-      recentGmv: parseMetric(columnValue(row, columns, "近7天GMV(￡)")),
+      recentSales: parseMetric(columnValue(row, columns, recentSalesHeader)),
+      recentGmv: parseMetric(columnValue(row, columns, recentGmvHeader)),
       totalSales: parseMetric(columnValue(row, columns, "总销量")),
       totalGmv: parseMetric(columnValue(row, columns, "总销售额(￡)")),
       creators: parseMetric(columnValue(row, columns, "带货达人数")),
@@ -198,6 +213,7 @@ export const parseProductWorkbook = async (file: File): Promise<ParseResult> => 
 
   return {
     products,
+    period,
     headerRow,
     foundHeaders: TRACKED_HEADERS.filter((header) => columns.has(header)),
     missingHeaders,

@@ -27,6 +27,7 @@ import type {
   Filters,
   PercentilePreset,
   Product,
+  ProductPeriod,
   SortDirection,
   SortField,
 } from "./types";
@@ -49,14 +50,30 @@ const initialFilters: Filters = {
   videos: "all",
 };
 
-const sortLabels: Record<SortField, string> = {
-  recentSales: "近7天销量",
+const sortLabels: Record<Exclude<SortField, "recentSales">, string> = {
   totalSales: "总销量",
   creators: "带货达人数",
   videos: "视频数",
   price: "价格",
   commissionRate: "佣金率",
 };
+
+const periodLabel = (period: ProductPeriod): string => period === "7d" ? "近7天" : "近30天";
+
+const sortLabel = (field: SortField, period: ProductPeriod): string =>
+  field === "recentSales" ? `${periodLabel(period)}销量` : sortLabels[field];
+
+interface ProductDataset {
+  products: Product[];
+  fileName: string;
+  foundHeaderCount: number;
+  parseNotice: string;
+  draftFilters: Filters;
+  appliedFilters: Filters;
+  sort: { field: SortField; direction: SortDirection };
+}
+
+type ProductDatasets = Partial<Record<ProductPeriod, ProductDataset>>;
 
 const presetName = (preset: PercentilePreset): string => {
   if (preset === "p15") return "最低 15%";
@@ -102,16 +119,18 @@ function ProductImage({ src, alt }: { src: string; alt: string }) {
 function SortButton({
   field,
   sort,
+  period,
   onSort,
 }: {
   field: SortField;
   sort: { field: SortField; direction: SortDirection };
+  period: ProductPeriod;
   onSort: (field: SortField) => void;
 }) {
   const active = sort.field === field;
   return (
     <button className={`sort-button${active ? " active" : ""}`} onClick={() => onSort(field)}>
-      <span>{sortLabels[field]}</span>
+      <span>{sortLabel(field, period)}</span>
       {active ? (
         sort.direction === "desc" ? <ArrowDown size={14} /> : <ArrowUp size={14} />
       ) : (
@@ -165,7 +184,7 @@ function EmptyState({ onPick }: { onPick: () => void }) {
     <div className="empty-state">
       <div className="empty-icon"><PackageSearch size={30} /></div>
       <h2>导入商品数据，开始筛选</h2>
-      <p>支持 EchoTik 导出的商品列表 Excel，文件只在当前浏览器本地解析。</p>
+      <p>支持 EchoTik 近7天和近30天商品列表 Excel，文件只在当前浏览器本地解析。</p>
       <button className="primary-button" onClick={onPick}>
         <CloudUpload size={17} /> 选择 Excel 文件
       </button>
@@ -176,19 +195,20 @@ function EmptyState({ onPick }: { onPick: () => void }) {
 function App() {
   const [activeModule, setActiveModule] = useState<"products" | "shops">("products");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [fileName, setFileName] = useState("");
-  const [draftFilters, setDraftFilters] = useState<Filters>(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
-  const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({
-    field: "recentSales",
-    direction: "desc",
-  });
+  const [productDatasets, setProductDatasets] = useState<ProductDatasets>({});
+  const [activePeriod, setActivePeriod] = useState<ProductPeriod>("7d");
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [parseNotice, setParseNotice] = useState("");
-  const [foundHeaderCount, setFoundHeaderCount] = useState(0);
+  const activeDataset = productDatasets[activePeriod];
+  const products = activeDataset?.products ?? [];
+  const fileName = activeDataset?.fileName ?? "";
+  const draftFilters = activeDataset?.draftFilters ?? initialFilters;
+  const appliedFilters = activeDataset?.appliedFilters ?? initialFilters;
+  const sort = activeDataset?.sort ?? { field: "recentSales", direction: "desc" as SortDirection };
+  const parseNotice = activeDataset?.parseNotice ?? "";
+  const foundHeaderCount = activeDataset?.foundHeaderCount ?? 0;
+  const hasAnyProductData = Boolean(productDatasets["7d"] || productDatasets["30d"]);
 
   const thresholds = useMemo(() => ({
     creators: getPercentileThresholds(products, "creators"),
@@ -221,39 +241,59 @@ function App() {
   }, [appliedFilters, products, sort, thresholds]);
 
   const updateFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
-    setDraftFilters((current) => ({ ...current, [key]: value }));
+    setProductDatasets((current) => {
+      const dataset = current[activePeriod];
+      if (!dataset) return current;
+      return { ...current, [activePeriod]: { ...dataset, draftFilters: { ...dataset.draftFilters, [key]: value } } };
+    });
   };
 
   const handleSort = (field: SortField) => {
-    setSort((current) => ({
-      field,
-      direction: current.field === field && current.direction === "desc" ? "asc" : "desc",
-    }));
+    setProductDatasets((current) => {
+      const dataset = current[activePeriod];
+      if (!dataset) return current;
+      const nextSort = {
+        field,
+        direction: dataset.sort.field === field && dataset.sort.direction === "desc" ? "asc" : "desc",
+      } as { field: SortField; direction: SortDirection };
+      return { ...current, [activePeriod]: { ...dataset, sort: nextSort } };
+    });
   };
 
-  const applyFilters = () => setAppliedFilters({ ...draftFilters });
+  const applyFilters = () => setProductDatasets((current) => {
+    const dataset = current[activePeriod];
+    if (!dataset) return current;
+    return { ...current, [activePeriod]: { ...dataset, appliedFilters: { ...dataset.draftFilters } } };
+  });
 
-  const clearFilters = () => {
-    setDraftFilters({ ...initialFilters });
-    setAppliedFilters({ ...initialFilters });
-  };
+  const clearFilters = () => setProductDatasets((current) => {
+    const dataset = current[activePeriod];
+    if (!dataset) return current;
+    return { ...current, [activePeriod]: { ...dataset, draftFilters: { ...initialFilters }, appliedFilters: { ...initialFilters } } };
+  });
 
   const loadFile = async (file?: File) => {
     if (!file) return;
     setError("");
-    setParseNotice("");
     setIsLoading(true);
     try {
       const result = await parseProductWorkbook(file);
-      setProducts(result.products);
-      setFileName(file.name);
-      setFoundHeaderCount(result.foundHeaders.length);
-      setDraftFilters({ ...initialFilters });
-      setAppliedFilters({ ...initialFilters });
-      const notices = [];
+      const notices: string[] = [];
       if (result.missingHeaders.length) notices.push(`未找到字段：${result.missingHeaders.join("、")}，对应数据将显示为 —`);
       if (result.skippedRows) notices.push(`已跳过 ${result.skippedRows} 行缺少商品名称或有效链接的数据`);
-      setParseNotice(notices.join("；"));
+      setProductDatasets((current) => ({
+        ...current,
+        [result.period]: {
+          products: result.products,
+          fileName: file.name,
+          foundHeaderCount: result.foundHeaders.length,
+          parseNotice: notices.join("；"),
+          draftFilters: { ...initialFilters },
+          appliedFilters: { ...initialFilters },
+          sort: { field: "recentSales", direction: "desc" },
+        },
+      }));
+      setActivePeriod(result.period);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "文件解析失败，请检查文件后重试。");
     } finally {
@@ -272,7 +312,7 @@ function App() {
     void loadFile(event.dataTransfer.files[0]);
   };
 
-  const hasDraftChanges = !filtersEqual(draftFilters, appliedFilters);
+  const hasDraftChanges = Boolean(activeDataset && !filtersEqual(draftFilters, appliedFilters));
   const appliedFiltersActive = hasActiveFilters(appliedFilters);
   const hasAnyFilterValues = hasActiveFilters(draftFilters) || hasActiveFilters(appliedFilters);
 
@@ -296,7 +336,7 @@ function App() {
         </div>
       </header>
 
-      {activeModule === "products" ? <main id="workspace" className={`workspace${products.length > 0 ? " work-mode" : ""}`}>
+      {activeModule === "products" ? <main id="workspace" className={`workspace${hasAnyProductData ? " work-mode" : ""}`}>
         <section className="page-heading">
           <div>
             <div className="eyebrow"><span className="eyebrow-line" /> PRODUCT DISCOVERY</div>
@@ -306,12 +346,24 @@ function App() {
           <div className="privacy-note"><CheckCircle2 size={16} /> 文件仅在浏览器本地解析</div>
         </section>
 
-        {products.length > 0 ? (
+        <section className="period-switcher" aria-label="商品数据周期">
+          {(["7d", "30d"] as ProductPeriod[]).map((period) => {
+            const dataset = productDatasets[period];
+            return (
+              <button key={period} type="button" className={`period-tab${activePeriod === period ? " active" : ""}${dataset ? " available" : ""}`} onClick={() => { setActivePeriod(period); setError(""); }}>
+                <span>{periodLabel(period)}</span>
+                <small>{dataset ? `${formatCount(dataset.products.length)} 件商品` : "未导入"}</small>
+              </button>
+            );
+          })}
+        </section>
+
+        {activeDataset ? (
           <section className="source-bar">
             <div className="source-bar-main">
               <div className="source-bar-icon"><FileSpreadsheet size={18} /></div>
               <div className="source-file">
-                <span>当前数据源</span>
+                <span>当前数据源 · {periodLabel(activePeriod)}数据</span>
                 <strong title={fileName}>{fileName}</strong>
               </div>
               <span className="source-divider" />
@@ -325,6 +377,19 @@ function App() {
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden />
             </div>
           </section>
+        ) : hasAnyProductData ? (
+          <section className="period-import-guide">
+            <div className="period-import-copy">
+              <div className="section-icon"><FileSpreadsheet size={20} /></div>
+              <div>
+                <div className="section-kicker">{periodLabel(activePeriod)} 数据</div>
+                <h2>{periodLabel(activePeriod)}商品列表尚未导入</h2>
+                <p>选择对应周期的 EchoTik 商品列表 Excel，系统会自动识别字段。</p>
+              </div>
+            </div>
+            <button className="primary-button" onClick={() => fileInputRef.current?.click()}><CloudUpload size={17} /> 导入 {periodLabel(activePeriod)} Excel</button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden />
+          </section>
         ) : (
           <section className="import-card">
             <div className="import-copy">
@@ -332,7 +397,7 @@ function App() {
               <div>
                 <div className="section-kicker">数据源</div>
                 <h2>导入 EchoTik 商品列表</h2>
-                <p>支持 .xlsx / .xls，自动识别第 2 行字段表头。</p>
+                <p>支持 EchoTik 近7天和近30天商品列表，系统会根据 Excel 字段自动识别数据周期。</p>
               </div>
             </div>
             <div
@@ -363,7 +428,7 @@ function App() {
           </div>
         )}
 
-        {products.length > 0 && (
+        {activeDataset && (
           <>
             <section className="overview-grid">
               <div className="overview-main">
@@ -383,7 +448,7 @@ function App() {
               </div>
               <div className="overview-stat accent-stat">
                 <span>当前排序</span>
-                <strong>{sortLabels[sort.field]}</strong>
+                <strong>{sortLabel(sort.field, activePeriod)}</strong>
                 <small>{sort.direction === "desc" ? "从高到低" : "从低到高"}</small>
               </div>
             </section>
@@ -414,7 +479,7 @@ function App() {
                   onMaxChange={(value) => updateFilter("totalMax", value)}
                 />
                 <RangeInput
-                  label="近 7 天销量"
+                  label={`${periodLabel(activePeriod)}销量`}
                   minValue={draftFilters.recentMin}
                   maxValue={draftFilters.recentMax}
                   onMinChange={(value) => updateFilter("recentMin", value)}
@@ -462,12 +527,12 @@ function App() {
                     <tr>
                       <th className="product-column">商品</th>
                       <th>所属店铺</th>
-                      <th><SortButton field="price" sort={sort} onSort={handleSort} /></th>
-                      <th><SortButton field="recentSales" sort={sort} onSort={handleSort} /></th>
-                      <th><SortButton field="totalSales" sort={sort} onSort={handleSort} /></th>
-                      <th><SortButton field="creators" sort={sort} onSort={handleSort} /></th>
-                      <th><SortButton field="videos" sort={sort} onSort={handleSort} /></th>
-                      <th><SortButton field="commissionRate" sort={sort} onSort={handleSort} /></th>
+                      <th><SortButton field="price" sort={sort} period={activePeriod} onSort={handleSort} /></th>
+                      <th><SortButton field="recentSales" sort={sort} period={activePeriod} onSort={handleSort} /></th>
+                      <th><SortButton field="totalSales" sort={sort} period={activePeriod} onSort={handleSort} /></th>
+                      <th><SortButton field="creators" sort={sort} period={activePeriod} onSort={handleSort} /></th>
+                      <th><SortButton field="videos" sort={sort} period={activePeriod} onSort={handleSort} /></th>
+                      <th><SortButton field="commissionRate" sort={sort} period={activePeriod} onSort={handleSort} /></th>
                       <th className="action-column">操作</th>
                     </tr>
                   </thead>
@@ -491,7 +556,7 @@ function App() {
                           <div className="shop-cell"><span>{product.shopName}</span><small>{product.estimatedTime || "—"}</small></div>
                         </td>
                         <td><span className="price-value">{product.price ? formatCurrency(product.price) : "—"}</span></td>
-                        <td><span className="metric-value highlight">{formatCompact(product.recentSales)}</span><small className="metric-label">近 7 天</small></td>
+                        <td><span className="metric-value highlight">{formatCompact(product.recentSales)}</span><small className="metric-label">{periodLabel(activePeriod)}</small></td>
                         <td><span className="metric-value">{formatCompact(product.totalSales)}</span><small className="metric-label">累计销量</small></td>
                         <td><span className="metric-value">{formatCount(product.creators)}</span></td>
                         <td><span className="metric-value">{formatCount(product.videos)}</span></td>
@@ -513,7 +578,7 @@ function App() {
           </>
         )}
 
-        {!products.length && !error && <EmptyState onPick={() => fileInputRef.current?.click()} />}
+        {!hasAnyProductData && !error && <EmptyState onPick={() => fileInputRef.current?.click()} />}
       </main> : <ShopBoard />}
       <footer className="footer"><span>Obsidian 选品工作台</span><span>EchoTik 数据 · 本地解析</span></footer>
     </div>
