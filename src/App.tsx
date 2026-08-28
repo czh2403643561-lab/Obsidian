@@ -199,8 +199,8 @@ function App() {
         if (totalMax !== null && product.totalSales > totalMax) return false;
         if (recentMin !== null && product.recentSales < recentMin) return false;
         if (recentMax !== null && product.recentSales > recentMax) return false;
-        if (product.creators < creatorsThreshold) return false;
-        if (product.videos < videosThreshold) return false;
+        if (product.creators > creatorsThreshold) return false;
+        if (product.videos > videosThreshold) return false;
         return true;
       })
       .sort((a, b) => {
@@ -383,9 +383,9 @@ function App() {
                   <div className="select-wrap">
                     <select id="creators-filter" value={filters.creators} onChange={(event) => updateFilter("creators", event.target.value as PercentilePreset)}>
                       <option value="all">不限</option>
-                      <option value="p15">最低 15% · ≥ {formatCompact(thresholds.creators.p15)}</option>
-                      <option value="p20">最低 20% · ≥ {formatCompact(thresholds.creators.p20)}</option>
-                      <option value="p50">最低 50% · ≥ {formatCompact(thresholds.creators.p50)}</option>
+                      <option value="p15">最低 15% · ≤ {formatCompact(thresholds.creators.p15)}</option>
+                      <option value="p20">最低 20% · ≤ {formatCompact(thresholds.creators.p20)}</option>
+                      <option value="p50">最低 50% · ≤ {formatCompact(thresholds.creators.p50)}</option>
                     </select>
                     <ChevronDown size={15} />
                   </div>
@@ -395,9 +395,9 @@ function App() {
                   <div className="select-wrap">
                     <select id="videos-filter" value={filters.videos} onChange={(event) => updateFilter("videos", event.target.value as PercentilePreset)}>
                       <option value="all">不限</option>
-                      <option value="p15">最低 15% · ≥ {formatCompact(thresholds.videos.p15)}</option>
-                      <option value="p20">最低 20% · ≥ {formatCompact(thresholds.videos.p20)}</option>
-                      <option value="p50">最低 50% · ≥ {formatCompact(thresholds.videos.p50)}</option>
+                      <option value="p15">最低 15% · ≤ {formatCompact(thresholds.videos.p15)}</option>
+                      <option value="p20">最低 20% · ≤ {formatCompact(thresholds.videos.p20)}</option>
+                      <option value="p50">最低 50% · ≤ {formatCompact(thresholds.videos.p50)}</option>
                     </select>
                     <ChevronDown size={15} />
                   </div>

@@ -43,7 +43,7 @@ export const presetThreshold = (preset: PercentilePreset, thresholds: Percentile
   if (preset === "p15") return thresholds.p15;
   if (preset === "p20") return thresholds.p20;
   if (preset === "p50") return thresholds.p50;
-  return Number.NEGATIVE_INFINITY;
+  return Number.POSITIVE_INFINITY;
 };
 
 export const hasActiveFilters = (filters: {
