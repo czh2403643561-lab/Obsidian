@@ -17,12 +17,12 @@
 
 ## 当前
 
-- 第一版商品列表选品工作台已完成，等待 GitHub Pages 首次部署和实际使用验收
+- 第一版商品列表选品工作台已完成，等待启用 GitHub Pages 后完成首次部署
 
 ## 问题
 
-- 无
+- GitHub Pages 尚未在仓库设置中启用，首个部署工作流无法获取 Pages 站点
 
 ## 下一步
 
-- 确认 GitHub Pages 首次部署后，根据实际使用反馈迭代第一版
+- 在仓库 Settings → Pages 中将 Source 设为 GitHub Actions；首次部署成功后，根据实际使用反馈迭代第一版
