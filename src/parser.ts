@@ -54,6 +54,7 @@ export const SHOP_TRACKED_HEADERS = [
 ];
 
 const SHOP_REQUIRED_HEADERS = ["店铺名称", "近7天销量", "总销量", "查看更多"];
+const SHOP_IDENTITY_HEADERS = ["Unique Id", "地区", "店铺评分", "带货商品数", "在店商品总数", "总达人数", "直播数", "采集时间"];
 
 const textValue = (value: unknown): string =>
   String(value ?? "")
@@ -129,6 +130,8 @@ const cellHyperlink = (sheet: XLSX.WorkSheet, row: number, column: number | unde
   const address = XLSX.utils.encode_cell({ r: row, c: column });
   return normalizeUrl(sheet[address]?.l?.Target);
 };
+
+const isShopUrl = (url: string): boolean => /^https:\/\/echotik\.live\/shops\//i.test(url);
 
 export const parseProductWorkbook = async (file: File): Promise<ParseResult> => {
   const extension = file.name.split(".").pop()?.toLowerCase();
@@ -260,7 +263,12 @@ export const parseShopWorkbook = async (file: File): Promise<ShopParseResult> =>
 
   const missingRequired = SHOP_REQUIRED_HEADERS.filter((header) => !columns.has(header));
   if (missingRequired.length) {
-    throw new Error(`缺少关键字段：${missingRequired.join("、")}`);
+    throw new Error(`请选择 EchoTik 小店列表 Excel，缺少关键字段：${missingRequired.join("、")}`);
+  }
+
+  const matchedIdentityHeaders = SHOP_IDENTITY_HEADERS.filter((header) => columns.has(header));
+  if (matchedIdentityHeaders.length < 4) {
+    throw new Error("请选择 EchoTik 小店列表 Excel，未识别到足够的店铺专属字段。");
   }
 
   const missingHeaders = SHOP_TRACKED_HEADERS.filter((header) => !columns.has(header));
@@ -275,7 +283,7 @@ export const parseShopWorkbook = async (file: File): Promise<ShopParseResult> =>
       cellHyperlink(sheet, sheetRow, columns.get("查看更多")) ||
       normalizeUrl(columnValue(row, columns, "查看更多"));
     if (!name && !url) return;
-    if (!name || !url) {
+    if (!name || !url || !isShopUrl(url)) {
       skippedRows += 1;
       return;
     }
@@ -304,7 +312,7 @@ export const parseShopWorkbook = async (file: File): Promise<ShopParseResult> =>
   });
 
   if (!shops.length) {
-    throw new Error("没有找到带 EchoTik 店铺链接的有效数据，请确认文件是小店列表导出文件。");
+    throw new Error("请选择 EchoTik 小店列表 Excel，未找到有效的 EchoTik 店铺链接。");
   }
 
   return {

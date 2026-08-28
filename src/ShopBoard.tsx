@@ -113,7 +113,7 @@ function ShopSortButton({
   );
 }
 
-export default function ShopBoard() {
+export default function ShopBoard({ hidden = false }: { hidden?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [shops, setShops] = useState<Shop[]>([]);
   const [fileName, setFileName] = useState("");
@@ -208,7 +208,7 @@ export default function ShopBoard() {
   const hasAnyFilterValues = hasActiveFilters(draftFilters) || hasActiveFilters(appliedFilters);
 
   return (
-    <main id="workspace" className={`workspace${shops.length > 0 ? " work-mode" : ""}`}>
+    <main id="shops-workspace" className={`workspace${shops.length > 0 ? " work-mode" : ""}`} hidden={hidden} aria-hidden={hidden}>
       <section className="page-heading">
         <div>
           <div className="eyebrow"><span className="eyebrow-line" /> SHOP RANKING</div>

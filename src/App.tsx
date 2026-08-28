@@ -336,7 +336,7 @@ function App() {
         </div>
       </header>
 
-      {activeModule === "products" ? <main id="workspace" className={`workspace${hasAnyProductData ? " work-mode" : ""}`}>
+      <main id="workspace" className={`workspace${hasAnyProductData ? " work-mode" : ""}`} hidden={activeModule !== "products"} aria-hidden={activeModule !== "products"}>
         <section className="page-heading">
           <div>
             <div className="eyebrow"><span className="eyebrow-line" /> PRODUCT DISCOVERY</div>
@@ -579,7 +579,8 @@ function App() {
         )}
 
         {!hasAnyProductData && !error && <EmptyState onPick={() => fileInputRef.current?.click()} />}
-      </main> : <ShopBoard />}
+      </main>
+      <ShopBoard hidden={activeModule !== "shops"} />
       <footer className="footer"><span>Obsidian 选品工作台</span><span>EchoTik 数据 · 本地解析</span></footer>
     </div>
   );
