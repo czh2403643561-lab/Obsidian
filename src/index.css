@@ -246,6 +246,51 @@ tbody tr:last-child td { border-bottom: 0; }
 .candidate-empty { display: flex; flex-direction: column; align-items: center; gap: 9px; min-height: 180px; padding: 38px; color: #a3abba; font-size: 13px; }
 .candidate-empty svg { color: var(--purple); }
 .candidate-empty strong { color: #667187; font-size: 16px; }
+.radar-workspace { min-height: calc(100vh - 128px); }
+.radar-category-bar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: -2px 0 14px; }
+.radar-category-bar .board-switcher { margin: 0; max-width: 72%; overflow: auto; }
+.radar-category-bar .board-switcher button { white-space: nowrap; }
+.radar-add-category { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.radar-add-category input { width: 150px; height: 32px; padding: 0 10px; color: #4e5a73; background: #fafbfe; border: 1px solid #e7eaf2; border-radius: 7px; outline: 0; font-size: 12px; }
+.radar-add-category input:focus { border-color: #9a92fa; box-shadow: 0 0 0 3px #f0eeff; }
+.radar-source-bar { margin-bottom: 14px; }
+.radar-tabs { margin: 0 0 14px; }
+.radar-tabs button { min-width: 108px; }
+.radar-filter-card { margin-top: 0; }
+.radar-filter-grid { grid-template-columns: 1.2fr 1fr 1fr 1fr auto; align-items: end; }
+.radar-filter-grid .search-filter { grid-column: auto; }
+.radar-priority-toggle { display: flex; align-items: center; gap: 7px; height: 36px; padding-bottom: 1px; color: #536077; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.radar-priority-toggle input { width: 15px; height: 15px; accent-color: var(--purple); }
+.radar-overview { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 14px; overflow: hidden; background: white; border: 1px solid #e9ecf4; border-radius: 12px; box-shadow: 0 10px 30px rgba(38, 54, 88, .045); }
+.radar-overview > div { min-height: 75px; padding: 13px 17px; border-right: 1px solid var(--line); }
+.radar-overview > div:last-child { border-right: 0; }
+.radar-overview span { display: block; color: #98a2b5; font-size: 11px; }
+.radar-overview strong { display: block; margin-top: 7px; color: var(--ink); font-size: 21px; letter-spacing: -.04em; }
+.radar-overview > div:first-child strong { color: var(--purple); }
+.radar-list { margin-top: 14px; }
+.radar-opportunity-list { border-top: 1px solid #eef0f5; }
+.radar-opportunity { display: grid; grid-template-columns: minmax(230px, 1.1fr) minmax(360px, 1.25fr) minmax(190px, .8fr); gap: 18px; align-items: center; padding: 17px 22px; border-bottom: 1px solid #eef0f5; }
+.radar-opportunity:last-child { border-bottom: 0; }
+.radar-keyword { min-width: 0; }
+.radar-keyword strong { display: block; overflow: hidden; color: #29354f; font-size: 15px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.radar-keyword span { display: inline-block; max-width: 100%; overflow: hidden; margin-top: 7px; color: #8992a7; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.radar-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.radar-metrics span { color: #97a0b2; font-size: 10px; }
+.radar-metrics b { display: block; margin-top: 5px; color: #36425c; font-size: 13px; font-variant-numeric: tabular-nums; }
+.radar-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.radar-tags small, .radar-source-pill { padding: 4px 6px; color: #717c92; background: #f2f4f8; border-radius: 5px; font-size: 10px; }
+.radar-tag { padding: 4px 7px; border-radius: 5px; font-size: 10px; font-style: normal; font-weight: 650; white-space: nowrap; }
+.radar-tag.demand-gap { color: #4d70a0; background: #edf4ff; }
+.radar-tag.accelerating { color: #5d51d6; background: var(--purple-soft); }
+.radar-tag.video-led { color: #9a6742; background: #fff3e8; }
+.radar-tag.competition-warning { color: #bb5a68; background: #fff0f2; }
+.radar-opportunity > p { grid-column: 1 / -1; margin: -4px 0 0; color: #7d879b; font-size: 12px; }
+.radar-table { min-width: 1000px; }
+.radar-table th:nth-child(n+4), .radar-table td:nth-child(n+4) { text-align: right; font-variant-numeric: tabular-nums; }
+.radar-table td { height: 58px; }
+.radar-table td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.radar-table td:first-child strong { color: #34405a; font-size: 12px; }
+.radar-trends-empty { margin-top: 0; }
 .shop-filter-grid { grid-template-columns: repeat(4, 1fr); }
 .seller-filter-grid { grid-template-columns: repeat(3, 1fr); }
 .shop-table, .seller-table { min-width: 0; }

@@ -217,3 +217,49 @@ export interface CandidateWorkspaceState {
   products: CandidateProduct[];
   shops: CandidateShop[];
 }
+
+export type OpportunityTag = "demand-gap" | "accelerating" | "video-led" | "competition-warning";
+export type OpportunityTab = "today" | "trends" | "all";
+export type OpportunitySortField = "searchVolume" | "searchChange" | "productsOnSale" | "productsOnSaleChange";
+
+export interface OpportunityRecord {
+  originalIndex: number;
+  keyword: string;
+  category: string;
+  leadSource: string;
+  searchVolume: number;
+  searchChange: number | null;
+  productsOnSale: number;
+  productsOnSaleChange: number | null;
+  capturedAt: string;
+  sessionId: string;
+}
+
+export interface OpportunitySnapshot {
+  id: string;
+  importedAt: string;
+  fileName: string;
+  records: OpportunityRecord[];
+}
+
+export interface OpportunityFilters {
+  search: string;
+  leadSource: string;
+  category: string;
+  tag: OpportunityTag | "all";
+  priorityOnly: boolean;
+}
+
+export interface OpportunityCategoryWorkspace {
+  id: string;
+  name: string;
+  snapshots: OpportunitySnapshot[];
+  activeTab: OpportunityTab;
+  filters: OpportunityFilters;
+  allSort: { field: OpportunitySortField | null; direction: SortDirection | null };
+}
+
+export interface OpportunityRadarState {
+  categories: OpportunityCategoryWorkspace[];
+  activeCategoryId: string | null;
+}
