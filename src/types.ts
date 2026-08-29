@@ -403,8 +403,9 @@ export interface BusinessAnalysisState {
   sort: { field: BusinessSortField | null; direction: SortDirection | null; basis?: BusinessSortBasis };
   metricView: BusinessMetricView;
   visibleColumns: BusinessSortField[];
+  performanceMetrics?: BusinessSortField[];
   comparisonMode?: BusinessComparisonMode;
   maintenanceFilters?: BusinessMaintenanceFilters;
-  cardTrendMetrics: Array<"gmv" | "skuOrders" | "impressions" | "clicks" | "ctr" | "addToCartRate" | "ctor" | "aov">;
+  cardTrendMetrics: Array<keyof BusinessCardMetrics>;
   mallTrendMetrics: Array<"gmv" | "impressions" | "clicks" | "ctr" | "ctor">;
 }
