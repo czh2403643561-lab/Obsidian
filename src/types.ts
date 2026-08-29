@@ -276,3 +276,111 @@ export interface OpportunityTranslationEntry {
 export interface OpportunityTranslationCache {
   entries: OpportunityTranslationEntry[];
 }
+
+export type BusinessAnalysisTab = "overview" | "products";
+export type BusinessSortField = "cardGmv" | "skuOrders" | "impressions" | "clicks" | "ctr" | "addToCartRate" | "ctor" | "mallImpressions" | "mallCtr" | "units" | "customers" | "aov" | "addToCarts" | "uniqueImpressions" | "uniqueClicks" | "uniqueCtr" | "addToCartUsers" | "uniqueAddToCartRate" | "uniqueCtor" | "mallClicks" | "mallUniqueClicks" | "mallCustomers" | "mallCtor" | "mallGmv" | "mallUnits";
+
+export interface BusinessCardMetrics {
+  gmv: number | null;
+  skuOrders: number | null;
+  units: number | null;
+  customers: number | null;
+  aov: number | null;
+  impressions: number | null;
+  clicks: number | null;
+  ctr: number | null;
+  addToCarts: number | null;
+  addToCartRate: number | null;
+  ctor: number | null;
+  uniqueImpressions: number | null;
+  uniqueClicks: number | null;
+  uniqueCtr: number | null;
+  addToCartUsers: number | null;
+  uniqueAddToCartRate: number | null;
+  uniqueCtor: number | null;
+}
+
+export interface BusinessMallMetrics {
+  impressions: number | null;
+  clicks: number | null;
+  uniqueClicks: number | null;
+  customers: number | null;
+  ctr: number | null;
+  ctor: number | null;
+  gmv: number | null;
+  units: number | null;
+}
+
+export interface BusinessTrendPoint<T> {
+  date: string;
+  metrics: T;
+}
+
+export interface BusinessProductRecord {
+  originalIndex: number;
+  productId: string;
+  name: string;
+  publishStatus: string;
+  gmvRange: string;
+  card: BusinessCardMetrics;
+  mall: BusinessMallMetrics;
+}
+
+export interface BusinessSourceStatus {
+  fileName: string;
+  detectedAs: "product-data" | "card-traffic" | "all-traffic";
+}
+
+export interface BusinessQualityIssue {
+  level: "warning";
+  message: string;
+}
+
+export interface BusinessBatch {
+  id: string;
+  startDate: string;
+  endDate: string;
+  importedAt: string;
+  sources: {
+    productData: BusinessSourceStatus;
+    cardTraffic: BusinessSourceStatus;
+    allTraffic: BusinessSourceStatus;
+  };
+  shopCardSummary: BusinessCardMetrics;
+  shopCardTrend: BusinessTrendPoint<BusinessCardMetrics>[];
+  shopMallSummary: BusinessMallMetrics;
+  shopMallTrend: BusinessTrendPoint<BusinessMallMetrics>[];
+  products: BusinessProductRecord[];
+  qualityIssues: BusinessQualityIssue[];
+}
+
+export interface BusinessProductFilters {
+  search: string;
+  publishStatus: string;
+  sales: "all" | "with-sales" | "without-sales";
+  cardGmvMin: string;
+  cardGmvMax: string;
+  impressionsMin: string;
+  impressionsMax: string;
+  ctrMin: string;
+  ctrMax: string;
+  addToCartRateMin: string;
+  addToCartRateMax: string;
+  ctorMin: string;
+  ctorMax: string;
+  mallImpressionsMin: string;
+  mallImpressionsMax: string;
+  mallCtrMin: string;
+  mallCtrMax: string;
+}
+
+export interface BusinessAnalysisState {
+  batches: BusinessBatch[];
+  activeBatchId: string | null;
+  activeTab: BusinessAnalysisTab;
+  filters: BusinessProductFilters;
+  sort: { field: BusinessSortField | null; direction: SortDirection | null };
+  visibleColumns: BusinessSortField[];
+  cardTrendMetrics: Array<"gmv" | "skuOrders" | "impressions" | "clicks" | "ctr" | "addToCartRate" | "ctor" | "aov">;
+  mallTrendMetrics: Array<"gmv" | "impressions" | "clicks" | "ctr" | "ctor">;
+}

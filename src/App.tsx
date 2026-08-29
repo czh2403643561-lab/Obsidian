@@ -16,6 +16,7 @@ import {
   Filter,
   Image as ImageIcon,
   LayoutDashboard,
+  LineChart,
   PackageSearch,
   RefreshCw,
   Radar,
@@ -28,6 +29,7 @@ import { parseProductWorkbook } from "./parser";
 import ShopBoard from "./ShopBoard";
 import CandidatePool from "./CandidatePool";
 import OpportunityRadar from "./OpportunityRadar";
+import BusinessAnalysis from "./BusinessAnalysis";
 import { clearWorkspaceData, resetPersistedState, usePersistedState } from "./persistence";
 import type {
   Filters,
@@ -95,7 +97,7 @@ interface ProductWorkspaceState {
   activePeriod: ProductPeriod;
 }
 
-interface UiState { activeModule: "products" | "shops" | "radar" | "candidates"; }
+interface UiState { activeModule: "products" | "shops" | "business" | "radar" | "candidates"; }
 
 const candidateKey = (id: string, url: string) => (url.trim() || id.trim()).toLowerCase();
 
@@ -415,6 +417,7 @@ function App() {
         <nav className="topnav" aria-label="主导航">
           <button type="button" className={activeModule === "products" ? "active" : ""} onClick={() => setActiveModule("products")}><LayoutDashboard size={16} /> 商品列表</button>
           <button type="button" className={activeModule === "shops" ? "active" : ""} onClick={() => setActiveModule("shops")}><Store size={16} /> 店铺榜单</button>
+          <button type="button" className={activeModule === "business" ? "active" : ""} onClick={() => setActiveModule("business")}><LineChart size={16} /> 经营分析</button>
           <button type="button" className={activeModule === "radar" ? "active" : ""} onClick={() => setActiveModule("radar")}><Radar size={16} /> 机会雷达</button>
           <button type="button" className={activeModule === "candidates" ? "active" : ""} onClick={() => setActiveModule("candidates")}><Bookmark size={16} /> 候选池</button>
         </nav>
@@ -676,6 +679,7 @@ function App() {
         {!hasAnyProductData && !error && <EmptyState onPick={() => fileInputRef.current?.click()} />}
       </main>
       <ShopBoard hidden={activeModule !== "shops"} candidateShops={candidateShops} onToggleCandidate={toggleShopCandidate} />
+      <BusinessAnalysis hidden={activeModule !== "business"} />
       <OpportunityRadar hidden={activeModule !== "radar"} />
       {activeModule === "candidates" && <CandidatePool products={candidateProducts} shops={candidateShops} onRemoveProduct={(key) => setCandidateWorkspace((current) => ({ ...current, products: current.products.filter((candidate) => candidate.key !== key) }))} onRemoveShop={(key) => setCandidateWorkspace((current) => ({ ...current, shops: current.shops.filter((candidate) => candidate.key !== key) }))} />}
       <footer className="footer"><span>Obsidian 选品工作台</span><span>EchoTik 数据 · 本地解析</span></footer>
