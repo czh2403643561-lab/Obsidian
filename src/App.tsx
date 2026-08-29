@@ -29,7 +29,7 @@ import { parseProductWorkbook } from "./parser";
 import ShopBoard from "./ShopBoard";
 import CandidatePool from "./CandidatePool";
 import OpportunityRadar from "./OpportunityRadar";
-import BusinessAnalysis from "./BusinessAnalysis";
+import AnalyticsPrototype from "./AnalyticsPrototype";
 import { clearWorkspaceData, resetPersistedState, usePersistedState } from "./persistence";
 import type {
   Filters,
@@ -679,7 +679,7 @@ function App() {
         {!hasAnyProductData && !error && <EmptyState onPick={() => fileInputRef.current?.click()} />}
       </main>
       <ShopBoard hidden={activeModule !== "shops"} candidateShops={candidateShops} onToggleCandidate={toggleShopCandidate} />
-      <BusinessAnalysis hidden={activeModule !== "business"} />
+      <AnalyticsPrototype hidden={activeModule !== "business"} />
       <OpportunityRadar hidden={activeModule !== "radar"} />
       {activeModule === "candidates" && <CandidatePool products={candidateProducts} shops={candidateShops} onRemoveProduct={(key) => setCandidateWorkspace((current) => ({ ...current, products: current.products.filter((candidate) => candidate.key !== key) }))} onRemoveShop={(key) => setCandidateWorkspace((current) => ({ ...current, shops: current.shops.filter((candidate) => candidate.key !== key) }))} />}
       <footer className="footer"><span>Obsidian 选品工作台</span><span>EchoTik 数据 · 本地解析</span></footer>
