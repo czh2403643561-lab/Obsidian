@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import "./analyticsPrototype.css";
+import ProductAnalyticsList from "./ProductAnalyticsList";
 
 type MetricKey = "gmv" | "units" | "skuOrders" | "orders";
 type CardPage = "performance" | "details";
@@ -292,7 +293,7 @@ function BreakdownPanel() {
 
 function AnalyticsShell() {
   const [notice, setNotice] = useState(true);
-  const [section, setSection] = useState<"store" | "card">("store");
+  const [section, setSection] = useState<"store" | "card" | "productData">("store");
   const [cardPage, setCardPage] = useState<CardPage>("performance");
   const [selectedMetrics, setSelectedMetrics] = useState(defaultSelectedMetrics);
   const [metricDraft, setMetricDraft] = useState(defaultSelectedMetrics);
@@ -303,16 +304,16 @@ function AnalyticsShell() {
   return (
     <main className="hf-analytics-shell">
       <header className="hf-page-header">
-        <div><h1>数据分析</h1><nav aria-label="分析导航"><button className={section === "store" ? "active" : ""} onClick={() => { setSection("store"); setDetailProduct(null); }}>店铺数据分析</button><button>成长和数据分析</button><button>内容分析</button><button className={section === "card" ? "active" : ""} onClick={() => { setSection("card"); setDetailProduct(null); }}>商品卡</button><button>商品数据分析</button><button>营销数据分析</button><button>售后数据分析</button></nav></div>
+        <div><h1>数据分析</h1><nav aria-label="分析导航"><button className={section === "store" ? "active" : ""} onClick={() => { setSection("store"); setDetailProduct(null); }}>店铺数据分析</button><button>成长和数据分析</button><button>内容分析</button><button className={section === "card" ? "active" : ""} onClick={() => { setSection("card"); setDetailProduct(null); }}>商品卡</button><button className={section === "productData" ? "active" : ""} onClick={() => { setSection("productData"); setDetailProduct(null); }}>商品数据分析</button><button>营销数据分析</button><button>售后数据分析</button></nav></div>
         <div className="hf-date-control"><span>(GMT+08:00)</span><button>最近 7 天：　2026/08/23　–　2026/08/29 <CalendarDays size={14} /></button><button className="compare-date">较前 7 日</button></div>
       </header>
-      <div className="hf-analytics-layout">
+      {section === "productData" ? <><div className="hf-main-content"><>{notice && <div className="hf-delay-notice"><AlertTriangleIcon /><span>目前，部分数据更新存在延迟，因此展示的数据可能无法反映最新的业务状态。我们的团队正在努力解决此问题。请稍后再来查看。</span><button aria-label="关闭提示" onClick={() => setNotice(false)}><X size={14} /></button></div>}</></div><ProductAnalyticsList /></> : <div className="hf-analytics-layout">
         {section === "store" ? <AnalyticsSidebar /> : <ProductCardSidebar page={cardPage} onPage={(page) => { setCardPage(page); setDetailProduct(null); }} />}
         <div className="hf-main-content">
           {notice && <div className="hf-delay-notice"><AlertTriangleIcon /><span>目前，部分数据更新存在延迟，因此展示的数据可能无法反映最新的业务状态。我们的团队正在努力解决此问题。请稍后再来查看。</span><button aria-label="关闭提示" onClick={() => setNotice(false)}><X size={14} /></button></div>}
           {section === "store" ? <><div className="hf-dashboard-grid"><KeyMetricsPanel /><RankingPanel /></div><BreakdownPanel /></> : detailProduct ? <ProductDetailPlaceholder name={detailProduct} onBack={() => setDetailProduct(null)} /> : cardPage === "performance" ? <CardPerformancePage onConfigure={openMetricModal} /> : <CardDetailsPage onConfigure={openMetricModal} onOpenProduct={setDetailProduct} />}
         </div>
-      </div>
+      </div>}
       {metricModal && <MetricModal draft={metricDraft} onToggle={toggleMetric} onRemove={(name) => setMetricDraft((current) => current.filter((item) => item !== name))} onCancel={() => { setMetricDraft(selectedMetrics); setMetricModal(false); }} onConfirm={() => { setSelectedMetrics(metricDraft); setMetricModal(false); }} />}
     </main>
   );
