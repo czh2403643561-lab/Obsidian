@@ -219,6 +219,7 @@ export interface CandidateWorkspaceState {
 }
 
 export type OpportunityTag = "demand-gap" | "accelerating" | "video-led" | "competition-warning";
+export type OpportunityLevel = "strong" | "watch" | "warning";
 export type OpportunityTab = "today" | "trends" | "all";
 export type OpportunitySortField = "searchVolume" | "searchChange" | "productsOnSale" | "productsOnSaleChange";
 
@@ -247,7 +248,7 @@ export interface OpportunityFilters {
   leadSource: string;
   category: string;
   tag: OpportunityTag | "all";
-  priorityOnly: boolean;
+  level: OpportunityLevel | "all";
 }
 
 export interface OpportunityCategoryWorkspace {
