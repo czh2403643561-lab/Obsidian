@@ -1,4 +1,4 @@
-import { getMetricDelta, indexProducts } from "./businessComparison";
+import { getMetricDelta, indexProducts, type BusinessProductDataBatch } from "./businessComparison";
 import type { BusinessBatch, BusinessMaintenancePriority, BusinessProductRecord } from "./types";
 
 export type MaintenanceDiagnosisCode = "distribution-down" | "click-efficiency-down" | "intent-down" | "conversion-down" | "high-exposure-low-click" | "high-click-low-conversion" | "high-potential-low-traffic" | "healthy-growth" | "data-insufficient";
@@ -70,14 +70,14 @@ const explanationFor = (diagnosis: MaintenanceDiagnosisCode, historyAvailable: b
   return historyAvailable ? "关键比例指标样本不足，暂不适合做强判断。" : "暂无历史对比，暂不判断趋势，建议结合当前店内相对表现持续观察。";
 };
 
-export const diagnoseMaintenance = (current: BusinessBatch, previous: BusinessBatch | null): MaintenanceResult => {
+export const diagnoseMaintenance = (current: BusinessBatch, previous: BusinessProductDataBatch | null): MaintenanceResult => {
   const fields: MetricKey[] = ["impressions", "mallImpressions", "clicks", "ctr", "addToCarts", "addToCartRate", "ctor", "skuOrders", "gmv"];
   const sampleThresholds = { impressions: sampleFloor(current.products.map((product) => value(product, "impressions"))), clicks: sampleFloor(current.products.map((product) => value(product, "clicks"))) };
   const benchmarkValues = (field: MetricKey) => current.products.filter((product) => field === "ctr" ? (value(product, "impressions") ?? 0) >= sampleThresholds.impressions : ["addToCartRate", "ctor"].includes(field) ? (value(product, "clicks") ?? 0) >= sampleThresholds.clicks : true).map((product) => value(product, field));
   const benchmarks = Object.fromEntries(fields.map((field) => [field, { p25: percentile(benchmarkValues(field), .25), p50: percentile(benchmarkValues(field), .5), p75: percentile(benchmarkValues(field), .75) }])) as MaintenanceResult["percentile"];
   const previousProducts = indexProducts(previous); const matched = current.products.filter((product) => previousProducts.has(product.productId));
   const changeP25 = Object.fromEntries(fields.map((field) => [field, percentile(matched.map((product) => change(value(product, field), value(previousProducts.get(product.productId)!, field), field === "ctr" || field === "addToCartRate" || field === "ctor")), .25)])) as Record<MetricKey, number | null>;
-  const qualityConcern = current.qualityIssues.length > 0 || (previous?.qualityIssues.length ?? 0) > 0;
+  const qualityConcern = current.qualityIssues.length > 0 || ((previous && "qualityIssues" in previous) ? (previous as BusinessBatch).qualityIssues.length > 0 : false);
   const isLow = (product: BusinessProductRecord, field: MetricKey) => benchmarks[field].p25 !== null && value(product, field) !== null && value(product, field)! <= benchmarks[field].p25!;
   const isHigh = (product: BusinessProductRecord, field: MetricKey) => benchmarks[field].p75 !== null && value(product, field) !== null && value(product, field)! >= benchmarks[field].p75!;
   const down = (product: BusinessProductRecord, prior: BusinessProductRecord | undefined, field: MetricKey) => { if (!prior) return false; const next = change(value(product, field), value(prior, field), field === "ctr" || field === "addToCartRate" || field === "ctor"); const threshold = changeP25[field]; return next !== null && next < 0 && (threshold === null || next <= threshold); };

@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import type { BusinessBatch, BusinessCardMetrics, BusinessMallMetrics, BusinessProductRecord, BusinessQualityIssue, BusinessSourceStatus, BusinessTrendPoint } from "./types";
+import type { BusinessBatch, BusinessCardMetrics, BusinessMallMetrics, BusinessProductHistoryBatch, BusinessProductRecord, BusinessQualityIssue, BusinessSourceStatus, BusinessTrendPoint } from "./types";
 
 type Rows = unknown[][];
 type DetectedFile = { file: File; source: BusinessSourceStatus; workbook: XLSX.WorkBook; dateRange: { startDate: string; endDate: string } };
@@ -151,4 +151,10 @@ export const parseBusinessFiles = async (files: File[]): Promise<BusinessBatch> 
   products.forEach((product) => { checkMetrics(`商品 ${product.productId} 的商品卡`, product.card, qualityIssues); checkMetrics(`商品 ${product.productId} 的商城页`, product.mall, qualityIssues); });
   addLatestMissingWarning("商品卡趋势", shopCardTrend[shopCardTrend.length - 1], qualityIssues); addLatestMissingWarning("商城页趋势", shopMallTrend[shopMallTrend.length - 1], qualityIssues);
   return { id: `business-${Date.now()}`, startDate: cardFile.dateRange.startDate, endDate: cardFile.dateRange.endDate, importedAt: new Date().toISOString(), sources: { productData: productsFile.source, cardTraffic: cardFile.source, allTraffic: allFile.source }, shopCardSummary, shopCardTrend, shopMallSummary, shopMallTrend, products, qualityIssues };
+};
+
+export const parseBusinessProductHistoryFile = async (file: File): Promise<BusinessProductHistoryBatch> => {
+  const detected = await sourceFrom(file);
+  if (detected.source.detectedAs !== "product-data") throw new Error("无法识别该文件。请选择商品数据 Excel。商品卡专项和全部流量文件不适用于此入口。");
+  return { id: `business-product-history-${Date.now()}`, startDate: detected.dateRange.startDate, endDate: detected.dateRange.endDate, importedAt: new Date().toISOString(), source: detected.source, products: parseProducts(detected.workbook) };
 };

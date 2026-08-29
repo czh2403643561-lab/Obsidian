@@ -1,4 +1,6 @@
-import type { BusinessBatch, BusinessProductRecord, BusinessSortField } from "./types";
+import type { BusinessBatch, BusinessProductHistoryBatch, BusinessProductRecord, BusinessSortField } from "./types";
+
+export type BusinessProductDataBatch = Pick<BusinessBatch, "id" | "startDate" | "endDate" | "importedAt" | "products"> | BusinessProductHistoryBatch;
 
 export type MetricDelta =
   | { kind: "unavailable"; value: null }
@@ -15,7 +17,7 @@ export const selectPreviousBatch = (batches: BusinessBatch[], activeBatch: Busin
     .sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate))[0] ?? null;
 };
 
-export const getPeriodRelation = (current: BusinessBatch, previous: BusinessBatch): PeriodRelation => {
+export const getPeriodRelation = (current: BusinessProductDataBatch, previous: BusinessProductDataBatch): PeriodRelation => {
   const difference = day(current.startDate) - day(previous.endDate);
   if (difference <= 0) return { kind: "overlap", days: Math.abs(difference) + 1 };
   if (difference === 1) return { kind: "continuous" };
@@ -34,9 +36,18 @@ export const deltaSortValue = (current: number | null, previous: number | null, 
   return delta.kind === "percent" || delta.kind === "points" ? delta.value : null;
 };
 
-export const indexProducts = (batch: BusinessBatch | null): Map<string, BusinessProductRecord> => new Map((batch?.products ?? []).map((product) => [product.productId, product]));
+export const indexProducts = (batch: BusinessProductDataBatch | null): Map<string, BusinessProductRecord> => new Map((batch?.products ?? []).map((product) => [product.productId, product]));
 
-export const getProductMatchStats = (current: BusinessBatch, previous: BusinessBatch | null) => {
+export const selectPreviousProductBatch = (batches: BusinessBatch[], historyBatches: BusinessProductHistoryBatch[], activeBatch: BusinessBatch | null): BusinessProductDataBatch | null => {
+  if (!activeBatch) return null;
+  const complete = batches.filter((candidate) => candidate.id !== activeBatch.id && candidate.endDate < activeBatch.endDate)
+    .sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate))[0];
+  if (complete) return complete;
+  return historyBatches.filter((candidate) => candidate.endDate < activeBatch.endDate)
+    .sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate))[0] ?? null;
+};
+
+export const getProductMatchStats = (current: BusinessBatch, previous: BusinessProductDataBatch | null) => {
   if (!previous) return { current: current.products.length, matched: 0, added: 0, missing: 0, comparable: false };
   const previousIds = new Set(previous.products.map((product) => product.productId));
   const currentIds = new Set(current.products.map((product) => product.productId));

@@ -354,6 +354,15 @@ export interface BusinessBatch {
   qualityIssues: BusinessQualityIssue[];
 }
 
+export interface BusinessProductHistoryBatch {
+  id: string;
+  startDate: string;
+  endDate: string;
+  importedAt: string;
+  source: BusinessSourceStatus;
+  products: BusinessProductRecord[];
+}
+
 export interface BusinessProductFilters {
   search: string;
   publishStatus: string;
@@ -387,6 +396,7 @@ export interface BusinessMaintenanceFilters {
 
 export interface BusinessAnalysisState {
   batches: BusinessBatch[];
+  productHistoryBatches: BusinessProductHistoryBatch[];
   activeBatchId: string | null;
   activeTab: BusinessAnalysisTab;
   filters: BusinessProductFilters;
