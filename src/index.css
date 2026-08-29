@@ -357,18 +357,22 @@ tbody tr:last-child td { border-bottom: 0; }
 .business-filter-grid .search-filter { grid-column: 1 / -1; }
 .business-products-card { margin-top: 15px; overflow: visible; }
 .business-products-card .table-wrap { overflow: auto; border-radius: 0 0 14px 14px; }
-.business-column-settings { position: relative; }
-.business-column-settings summary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; color: var(--purple); background: #faf9ff; border: 1px solid #dedaff; border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 650; list-style: none; }
-.business-column-settings summary::-webkit-details-marker { display: none; }
-.business-column-settings > div { position: absolute; z-index: 5; right: 0; top: 37px; display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 8px 14px; width: 355px; padding: 13px; color: #59657d; background: white; border: 1px solid #e2e5ef; border-radius: 9px; box-shadow: 0 13px 28px rgba(38, 54, 88, .13); font-size: 11px; }
-.business-column-settings label { display: flex; align-items: center; gap: 6px; }
-.business-column-settings input { accent-color: var(--purple); }
+.business-metric-view { display: flex; align-items: center; gap: 8px; color: #78839a; font-size: 11px; font-weight: 650; }
+.business-metric-view > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.business-metric-view > span svg { color: var(--purple); }
+.business-metric-view > div { display: inline-flex; padding: 3px; background: #f1f0fb; border-radius: 8px; }
+.business-metric-view button { padding: 5px 8px; color: #73809a; background: transparent; border: 0; border-radius: 6px; cursor: pointer; font: inherit; }
+.business-metric-view button.active { color: var(--purple); background: white; box-shadow: 0 1px 4px rgba(48, 52, 110, .14); }
 .business-product-table { min-width: 0; table-layout: fixed; }
-.business-product-table.has-extra-columns { min-width: 1550px; }
-.business-product-table:not(.has-extra-columns) .business-product-name-col { width: 34%; }
-.business-product-table:not(.has-extra-columns) .business-metric-col { width: 7.333%; }
-.business-product-table.has-extra-columns .business-product-name-col { width: 360px; }
-.business-product-table.has-extra-columns .business-metric-col { width: 118px; }
+.business-product-table.metric-view-core .business-product-name-col { width: 34%; }
+.business-product-table.metric-view-core .business-metric-col { width: 7.333%; }
+.business-product-table.metric-view-card { min-width: 1640px; }
+.business-product-table.metric-view-card .business-product-name-col { width: 360px; }
+.business-product-table.metric-view-card .business-metric-col { width: 116px; }
+.business-product-table.metric-view-dedup .business-product-name-col { width: 40%; }
+.business-product-table.metric-view-dedup .business-metric-col { width: 10%; }
+.business-product-table.metric-view-mall .business-product-name-col { width: 35%; }
+.business-product-table.metric-view-mall .business-metric-col { width: 8.125%; }
 .business-product-table th:not(.business-product-name), .business-product-table td:not(.business-product-name) { padding-right: 12px; padding-left: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 .business-product-table td { height: 86px; color: #39455e; font-size: 12px; font-weight: 650; }
 .business-product-name { width: 300px; padding-left: 21px; text-align: left !important; }

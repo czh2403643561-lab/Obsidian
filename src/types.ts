@@ -374,12 +374,15 @@ export interface BusinessProductFilters {
   mallCtrMax: string;
 }
 
+export type BusinessMetricView = "core" | "card" | "dedup" | "mall";
+
 export interface BusinessAnalysisState {
   batches: BusinessBatch[];
   activeBatchId: string | null;
   activeTab: BusinessAnalysisTab;
   filters: BusinessProductFilters;
   sort: { field: BusinessSortField | null; direction: SortDirection | null };
+  metricView: BusinessMetricView;
   visibleColumns: BusinessSortField[];
   cardTrendMetrics: Array<"gmv" | "skuOrders" | "impressions" | "clicks" | "ctr" | "addToCartRate" | "ctor" | "aov">;
   mallTrendMetrics: Array<"gmv" | "impressions" | "clicks" | "ctr" | "ctor">;

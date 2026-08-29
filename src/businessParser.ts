@@ -125,7 +125,10 @@ const checkMetrics = (label: string, metrics: BusinessCardMetrics | BusinessMall
 const addLatestMissingWarning = (label: string, point: BusinessTrendPoint<BusinessCardMetrics> | BusinessTrendPoint<BusinessMallMetrics> | undefined, issues: BusinessQualityIssue[]) => {
   if (!point) return;
   const values = Object.values(point.metrics);
-  if (values.filter((value) => value === null).length >= Math.ceil(values.length * 0.45)) issues.push({ level: "warning", message: `${label}最新日期 ${point.date} 的缺失字段较多。` });
+  if (values.filter((value) => value === null).length >= Math.ceil(values.length * 0.45)) {
+    const source = label === "商城页趋势" ? "商城页" : "商品卡";
+    issues.push({ level: "warning", message: `TikTok 最新日期数据可能仍在更新。${point.date} ${source}部分指标尚未完整返回，本日趋势暂不建议用于判断。` });
+  }
 };
 
 export const parseBusinessFiles = async (files: File[]): Promise<BusinessBatch> => {
