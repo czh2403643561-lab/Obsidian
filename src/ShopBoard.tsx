@@ -44,7 +44,7 @@ interface SmallShopWorkspaceState {
   importedAt: string;
   draftFilters: ShopFilters;
   appliedFilters: ShopFilters;
-  sort: { field: ShopSortField; direction: SortDirection };
+  sort: { field: ShopSortField | null; direction: SortDirection | null };
   parseNotice: string;
   foundHeaderCount: number;
 }
@@ -55,7 +55,7 @@ const initialWorkspaceState = (): SmallShopWorkspaceState => ({
   importedAt: "",
   draftFilters: { ...initialFilters },
   appliedFilters: { ...initialFilters },
-  sort: { field: "recentSales", direction: "desc" },
+  sort: { field: null, direction: null },
   parseNotice: "",
   foundHeaderCount: 0,
 });
@@ -126,7 +126,7 @@ function ShopSortButton({
   onSort,
 }: {
   field: ShopSortField;
-  sort: { field: ShopSortField; direction: SortDirection };
+  sort: { field: ShopSortField | null; direction: SortDirection | null };
   onSort: (field: ShopSortField) => void;
 }) {
   const active = sort.field === field;
@@ -188,9 +188,10 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
         return true;
       })
       .sort((a, b) => {
+        if (!sort.field || !sort.direction) return (a.originalIndex ?? shops.indexOf(a)) - (b.originalIndex ?? shops.indexOf(b));
         const difference = a[sort.field] - b[sort.field];
         if (difference !== 0) return sort.direction === "desc" ? -difference : difference;
-        return a.name.localeCompare(b.name, "zh-CN");
+        return (a.originalIndex ?? shops.indexOf(a)) - (b.originalIndex ?? shops.indexOf(b));
       });
   }, [appliedFilters, shops, sort, thresholds]);
 
@@ -213,7 +214,7 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
         importedAt: new Date().toISOString(),
         draftFilters: { ...initialFilters },
         appliedFilters: { ...initialFilters },
-        sort: { field: "recentSales", direction: "desc" },
+        sort: { field: null, direction: null },
         parseNotice: notices.join("；"),
         foundHeaderCount: result.foundHeaders.length,
       });
@@ -225,7 +226,11 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
     }
   };
 
-  const handleSort = (field: ShopSortField) => setWorkspace((current) => ({ ...current, sort: { field, direction: current.sort.field === field && current.sort.direction === "desc" ? "asc" : "desc" } }));
+  const handleSort = (field: ShopSortField) => setWorkspace((current) => {
+    if (current.sort.field !== field) return { ...current, sort: { field, direction: "desc" } };
+    if (current.sort.direction === "desc") return { ...current, sort: { field, direction: "asc" } };
+    return { ...current, sort: { field: null, direction: null } };
+  });
 
   const hasDraftChanges = !filtersEqual(draftFilters, appliedFilters);
   const appliedFiltersActive = hasActiveFilters(appliedFilters);
@@ -268,7 +273,7 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
           <div className="overview-main"><span>导入数量</span><strong>{formatCount(shops.length)}</strong><small>家店铺</small></div>
           <div className="overview-stat"><span>当前结果</span><strong>{formatCount(filteredShops.length)}</strong><small>符合筛选条件</small></div>
           <div className="overview-stat"><span>店铺类型</span><strong>{shopTypes.length}</strong><small>已识别类型</small></div>
-          <div className="overview-stat accent-stat"><span>当前排序</span><strong>{sortLabels[sort.field]}</strong><small>{sort.direction === "desc" ? "从高到低" : "从低到高"}</small></div>
+          <div className="overview-stat accent-stat"><span>当前排序</span><strong>{sort.field ? sortLabels[sort.field] : "原始榜单顺序"}</strong><small>{sort.direction === "desc" ? "从高到低" : sort.direction === "asc" ? "从低到高" : "未启用排序"}</small></div>
         </section>
 
         {parseNotice && <div className="notice info-notice"><CircleHelp size={17} /><span>{parseNotice}</span></div>}
@@ -297,7 +302,7 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
 
         <section className="list-card shop-list-card">
           <div className="list-card-header shop-list-card-header"><div><div className="list-heading"><h2>店铺榜单</h2><span className="result-pill">{formatCount(filteredShops.length)} 个结果</span>{regionLabel && <span className="market-badge"><Globe2 size={17} /><span>{regionLabel}</span></span>}</div><p>点击店铺名称打开 EchoTik 原店铺页</p></div><div className="list-actions"><Store size={15} /> {presetName(appliedFilters.creators)} 达人 · {presetName(appliedFilters.videos)} 视频</div></div>
-          <div className="table-wrap"><table className="shop-table"><colgroup><col className="shop-col-name" /><col className="shop-col-type" /><col className="shop-col-rating" /><col className="shop-col-recent-sales" /><col className="shop-col-total-sales" /><col className="shop-col-gmv" /><col className="shop-col-products" /><col className="shop-col-creators" /><col className="shop-col-videos" /><col className="shop-col-lives" /></colgroup><thead><tr><th className="shop-name-column">店铺</th><th>店铺类型</th><th className="shop-number-column"><ShopSortButton field="rating" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="recentSales" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="totalSales" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="recentGmv" sort={sort} onSort={handleSort} /></th><th className="shop-number-column">带货 / 在店商品</th><th className="shop-number-column"><ShopSortButton field="creators" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="videos" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="lives" sort={sort} onSort={handleSort} /></th></tr></thead>
+          <div className="table-wrap"><table className="shop-table" data-sort-field={sort.field ?? undefined}><colgroup><col className="shop-col-name" /><col className="shop-col-type" /><col className="shop-col-rating" /><col className="shop-col-recent-sales" /><col className="shop-col-total-sales" /><col className="shop-col-gmv" /><col className="shop-col-products" /><col className="shop-col-creators" /><col className="shop-col-videos" /><col className="shop-col-lives" /></colgroup><thead><tr><th className="shop-name-column">店铺</th><th>店铺类型</th><th className="shop-number-column"><ShopSortButton field="rating" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="recentSales" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="totalSales" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="recentGmv" sort={sort} onSort={handleSort} /></th><th className="shop-number-column">带货 / 在店商品</th><th className="shop-number-column"><ShopSortButton field="creators" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="videos" sort={sort} onSort={handleSort} /></th><th className="shop-number-column"><ShopSortButton field="lives" sort={sort} onSort={handleSort} /></th></tr></thead>
             <tbody>{filteredShops.map((shop) => <tr key={`${shop.id}-${shop.url}`}><td className="shop-name-column"><a className="shop-name-link" href={shop.url} target="_blank" rel="noreferrer"><span className="shop-avatar"><Store size={17} /></span><span><strong title={shop.name}>{shop.name}</strong><small>{shop.deliveryCategory || "未填写分类"}</small></span></a></td><td><div className="shop-cell"><span>{shop.shopType}</span><small>{shop.managed ? `全托管：${shop.managed}` : "全托管：—"}</small></div></td><td className="shop-number-column"><span className="rating-badge">{shop.rating ? shop.rating.toFixed(1) : "—"}</span></td><td className="shop-number-column"><span className="metric-value highlight">{formatCompact(shop.recentSales)}</span><small className="metric-label">近 7 天</small></td><td className="shop-number-column"><span className="metric-value">{formatCompact(shop.totalSales)}</span><small className="metric-label">累计销量</small></td><td className="shop-number-column"><span className="metric-value amount-value">£{formatCompact(shop.recentGmv)}</span><small className="metric-label">近 7 天</small></td><td className="shop-number-column"><span className="metric-value">{formatCompact(shop.promotedProductCount)}</span><small className="metric-label">在店 {formatCompact(shop.totalProducts)}</small></td><td className="shop-number-column"><span className="metric-value">{formatCount(shop.creators)}</span></td><td className="shop-number-column"><span className="metric-value">{formatCount(shop.videos)}</span></td><td className="shop-number-column"><span className="metric-value">{formatCount(shop.lives)}</span></td></tr>)}</tbody></table>
             {!filteredShops.length && <div className="no-results"><div className="empty-icon small"><Search size={20} /></div><strong>没有符合条件的店铺</strong><span>尝试放宽筛选范围，或清除筛选重新查看。</span><button className="text-button" onClick={() => setWorkspace((current) => ({ ...current, draftFilters: { ...initialFilters }, appliedFilters: { ...initialFilters } }))}>清除筛选</button></div>}
           </div>

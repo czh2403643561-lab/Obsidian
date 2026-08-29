@@ -305,6 +305,7 @@ export const parseShopWorkbook = async (file: File): Promise<ShopParseResult> =>
     }
 
     shops.push({
+      originalIndex: shops.length,
       id: textValue(columnValue(row, columns, "Unique Id")) || `shop-row-${index + 1}`,
       url,
       name,
@@ -397,6 +398,7 @@ export const parseSellerRankWorkbook = async (file: File): Promise<SellerRankPar
     }
 
     sellers.push({
+      originalIndex: sellers.length,
       id: `seller-row-${index + 1}`,
       url,
       name,

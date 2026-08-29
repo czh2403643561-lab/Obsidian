@@ -66,6 +66,7 @@ export type ShopSortField =
   | "lives";
 
 export interface Shop {
+  originalIndex: number;
   id: string;
   url: string;
   name: string;
@@ -113,6 +114,7 @@ export interface ShopParseResult {
 export type SellerRankSortField = "salesAmount" | "sales" | "promotedProductCount" | "creators" | "videos" | "lives";
 
 export interface SellerRank {
+  originalIndex: number;
   id: string;
   url: string;
   name: string;

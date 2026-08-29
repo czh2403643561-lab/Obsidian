@@ -13,6 +13,7 @@
   --purple: #6659ee;
   --purple-dark: #5145d6;
   --purple-soft: #f0eeff;
+  --purple-column-highlight: color-mix(in srgb, var(--purple-soft) 48%, white);
   --green: #20a87b;
   --orange: #ed8e3c;
 }
@@ -220,6 +221,19 @@ tbody tr:last-child td { border-bottom: 0; }
 .shop-number-column, .seller-number-column { padding-right: 10px; padding-left: 10px; text-align: center; font-variant-numeric: tabular-nums; }
 .shop-number-column .sort-button, .seller-number-column .sort-button { justify-content: center; width: 100%; }
 .shop-number-column .metric-value, .shop-number-column .metric-label, .seller-number-column .metric-value { text-align: center; }
+.shop-table[data-sort-field="rating"] :is(th, td):nth-child(3),
+.shop-table[data-sort-field="recentSales"] :is(th, td):nth-child(4),
+.shop-table[data-sort-field="totalSales"] :is(th, td):nth-child(5),
+.shop-table[data-sort-field="recentGmv"] :is(th, td):nth-child(6),
+.shop-table[data-sort-field="creators"] :is(th, td):nth-child(8),
+.shop-table[data-sort-field="videos"] :is(th, td):nth-child(9),
+.shop-table[data-sort-field="lives"] :is(th, td):nth-child(10),
+.seller-table[data-sort-field="salesAmount"] :is(th, td):nth-child(3),
+.seller-table[data-sort-field="sales"] :is(th, td):nth-child(4),
+.seller-table[data-sort-field="promotedProductCount"] :is(th, td):nth-child(5),
+.seller-table[data-sort-field="creators"] :is(th, td):nth-child(6),
+.seller-table[data-sort-field="videos"] :is(th, td):nth-child(7),
+.seller-table[data-sort-field="lives"] :is(th, td):nth-child(8) { background: var(--purple-column-highlight); }
 .shop-name-link { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .shop-name-link:hover strong { color: var(--purple); }
 .shop-name-link > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
