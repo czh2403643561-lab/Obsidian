@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDown,
@@ -43,6 +43,7 @@ import {
 } from "./utils";
 
 const initialFilters: Filters = {
+  search: "",
   totalMin: "",
   totalMax: "",
   recentMin: "",
@@ -61,8 +62,10 @@ const sortLabels: Record<Exclude<SortField, "recentSales">, string> = {
 
 const periodLabel = (period: ProductPeriod): string => period === "7d" ? "近7天" : "近30天";
 
-const sortLabel = (field: SortField, period: ProductPeriod): string =>
-  field === "recentSales" ? `${periodLabel(period)}销量` : sortLabels[field];
+const sortLabel = (field: SortField | null, period: ProductPeriod): string => {
+  if (!field) return "原始榜单顺序";
+  return field === "recentSales" ? `${periodLabel(period)}销量` : sortLabels[field];
+};
 
 interface ProductDataset {
   products: Product[];
@@ -72,7 +75,7 @@ interface ProductDataset {
   parseNotice: string;
   draftFilters: Filters;
   appliedFilters: Filters;
-  sort: { field: SortField; direction: SortDirection };
+  sort: { field: SortField | null; direction: SortDirection | null };
 }
 
 type ProductDatasets = Partial<Record<ProductPeriod, ProductDataset>>;
@@ -98,6 +101,7 @@ const parseInputNumber = (value: string): number | null => {
 };
 
 const filtersEqual = (left: Filters, right: Filters): boolean =>
+  left.search === right.search &&
   left.totalMin === right.totalMin &&
   left.totalMax === right.totalMax &&
   left.recentMin === right.recentMin &&
@@ -132,7 +136,7 @@ function SortButton({
   onSort,
 }: {
   field: SortField;
-  sort: { field: SortField; direction: SortDirection };
+  sort: { field: SortField | null; direction: SortDirection | null };
   period: ProductPeriod;
   onSort: (field: SortField) => void;
 }) {
@@ -218,12 +222,26 @@ function App() {
   const activeDataset = productDatasets[activePeriod];
   const products = activeDataset?.products ?? [];
   const fileName = activeDataset?.fileName ?? "";
-  const draftFilters = activeDataset?.draftFilters ?? initialFilters;
-  const appliedFilters = activeDataset?.appliedFilters ?? initialFilters;
-  const sort = activeDataset?.sort ?? { field: "recentSales", direction: "desc" as SortDirection };
+  const draftFilters = { ...initialFilters, ...activeDataset?.draftFilters };
+  const appliedFilters = { ...initialFilters, ...activeDataset?.appliedFilters };
+  const sort = activeDataset?.sort ?? { field: null, direction: null };
   const parseNotice = activeDataset?.parseNotice ?? "";
   const foundHeaderCount = activeDataset?.foundHeaderCount ?? 0;
   const hasAnyProductData = Boolean(productDatasets["7d"] || productDatasets["30d"]);
+
+  useEffect(() => {
+    const needsOriginalIndexes = Object.values(productDatasets).some((dataset) => dataset?.products.some((product) => !Number.isInteger(product.originalIndex)));
+    if (!needsOriginalIndexes) return;
+    setProductWorkspace((current) => ({
+      ...current,
+      productDatasets: Object.fromEntries(Object.entries(current.productDatasets).map(([period, dataset]) => [
+        period,
+        dataset && dataset.products.some((product) => !Number.isInteger(product.originalIndex))
+          ? { ...dataset, products: dataset.products.map((product, index) => Number.isInteger(product.originalIndex) ? product : { ...product, originalIndex: index }) }
+          : dataset,
+      ])) as ProductDatasets,
+    }));
+  }, [productDatasets, setProductWorkspace]);
 
   const thresholds = useMemo(() => ({
     creators: getPercentileThresholds(products, "creators"),
@@ -237,9 +255,11 @@ function App() {
     const recentMax = parseInputNumber(appliedFilters.recentMax);
     const creatorsThreshold = presetThreshold(appliedFilters.creators, thresholds.creators);
     const videosThreshold = presetThreshold(appliedFilters.videos, thresholds.videos);
+    const searchQuery = (appliedFilters.search ?? "").trim().toLowerCase();
 
     return products
       .filter((product) => {
+        if (searchQuery && !`${product.name} ${product.shopName}`.toLowerCase().includes(searchQuery)) return false;
         if (totalMin !== null && product.totalSales < totalMin) return false;
         if (totalMax !== null && product.totalSales > totalMax) return false;
         if (recentMin !== null && product.recentSales < recentMin) return false;
@@ -249,9 +269,10 @@ function App() {
         return true;
       })
       .sort((a, b) => {
+        if (!sort.field || !sort.direction) return (a.originalIndex ?? products.indexOf(a)) - (b.originalIndex ?? products.indexOf(b));
         const difference = sortValue(a, sort.field) - sortValue(b, sort.field);
         if (difference !== 0) return sort.direction === "desc" ? -difference : difference;
-        return a.name.localeCompare(b.name, "zh-CN");
+        return (a.originalIndex ?? products.indexOf(a)) - (b.originalIndex ?? products.indexOf(b));
       });
   }, [appliedFilters, products, sort, thresholds]);
 
@@ -267,10 +288,11 @@ function App() {
     setProductDatasets((current) => {
       const dataset = current[activePeriod];
       if (!dataset) return current;
-      const nextSort = {
-        field,
-        direction: dataset.sort.field === field && dataset.sort.direction === "desc" ? "asc" : "desc",
-      } as { field: SortField; direction: SortDirection };
+      const nextSort = dataset.sort.field !== field
+        ? { field, direction: "desc" as const }
+        : dataset.sort.direction === "desc"
+          ? { field, direction: "asc" as const }
+          : { field: null, direction: null };
       return { ...current, [activePeriod]: { ...dataset, sort: nextSort } };
     });
   };
@@ -306,7 +328,7 @@ function App() {
           parseNotice: notices.join("；"),
           draftFilters: { ...initialFilters },
           appliedFilters: { ...initialFilters },
-          sort: { field: "recentSales", direction: "desc" },
+          sort: { field: null, direction: null },
         },
       }));
       setActivePeriod(result.period);
@@ -475,7 +497,7 @@ function App() {
               <div className="overview-stat accent-stat">
                 <span>当前排序</span>
                 <strong>{sortLabel(sort.field, activePeriod)}</strong>
-                <small>{sort.direction === "desc" ? "从高到低" : "从低到高"}</small>
+                <small>{sort.direction === "desc" ? "从高到低" : sort.direction === "asc" ? "从低到高" : "未启用排序"}</small>
               </div>
             </section>
 
@@ -497,6 +519,10 @@ function App() {
                 </div>
               </div>
               <div className="filter-grid">
+                <div className="filter-block search-filter">
+                  <label htmlFor="product-search">搜索名称</label>
+                  <div className="search-input"><Search size={15} /><input id="product-search" type="search" value={draftFilters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="商品名称或所属店铺" /></div>
+                </div>
                 <RangeInput
                   label="总销量"
                   minValue={draftFilters.totalMin}
@@ -548,7 +574,7 @@ function App() {
                 <div className="list-actions"><Store size={15} /> {presetName(appliedFilters.creators)} 达人 · {presetName(appliedFilters.videos)} 视频</div>
               </div>
               <div className="table-wrap">
-                <table className="product-table">
+                <table className="product-table" data-sort-field={sort.field ?? undefined}>
                   <thead>
                     <tr>
                       <th className="product-column">商品</th>

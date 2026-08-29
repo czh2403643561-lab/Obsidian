@@ -50,6 +50,7 @@ export const presetThreshold = (preset: PercentilePreset, thresholds: Percentile
 };
 
 export const hasActiveFilters = (filters: {
+  search: string;
   totalMin: string;
   totalMax: string;
   recentMin: string;
@@ -57,7 +58,8 @@ export const hasActiveFilters = (filters: {
   creators: PercentilePreset;
   videos: PercentilePreset;
 }): boolean => Boolean(
-  filters.totalMin ||
+  filters.search ||
+    filters.totalMin ||
     filters.totalMax ||
     filters.recentMin ||
     filters.recentMax ||

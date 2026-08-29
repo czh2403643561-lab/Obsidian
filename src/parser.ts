@@ -206,6 +206,7 @@ export const parseProductWorkbook = async (file: File): Promise<ParseResult> => 
     }
 
     products.push({
+      originalIndex: products.length,
       id: textValue(columnValue(row, columns, "商品Id")) || `row-${index + 1}`,
       url,
       name,

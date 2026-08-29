@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDown,
@@ -24,6 +24,7 @@ import type { PercentilePreset, Shop, ShopFilters, ShopSortField, SortDirection 
 import { formatCompact, formatCount, getPercentileThresholds, presetThreshold } from "./utils";
 
 const initialFilters: ShopFilters = {
+  search: "",
   recentMin: "",
   recentMax: "",
   totalMin: "",
@@ -88,7 +89,7 @@ const filtersEqual = (left: ShopFilters, right: ShopFilters): boolean =>
 
 const hasActiveFilters = (filters: ShopFilters): boolean =>
   Boolean(
-    filters.recentMin || filters.recentMax || filters.totalMin || filters.totalMax ||
+    filters.search || filters.recentMin || filters.recentMax || filters.totalMin || filters.totalMax ||
     filters.recentGmvMin || filters.recentGmvMax || filters.ratingMin || filters.ratingMax ||
     filters.shopType !== "all" || filters.managed !== "all" || filters.creators !== "all" || filters.videos !== "all",
   );
@@ -141,10 +142,20 @@ function ShopSortButton({
 function SmallShopList({ hidden }: { hidden: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [workspace, setWorkspace] = usePersistedState<SmallShopWorkspaceState>("small-shops", initialWorkspaceState);
-  const { shops, fileName, draftFilters, appliedFilters, sort, parseNotice, foundHeaderCount } = workspace;
+  const { shops, fileName, sort, parseNotice, foundHeaderCount } = workspace;
+  const draftFilters = { ...initialFilters, ...workspace.draftFilters };
+  const appliedFilters = { ...initialFilters, ...workspace.appliedFilters };
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!shops.some((shop) => !Number.isInteger(shop.originalIndex))) return;
+    setWorkspace((current) => ({
+      ...current,
+      shops: current.shops.map((shop, index) => Number.isInteger(shop.originalIndex) ? shop : { ...shop, originalIndex: index }),
+    }));
+  }, [shops, setWorkspace]);
 
   const thresholds = useMemo(() => ({
     creators: getPercentileThresholds(shops, "creators"),
@@ -171,9 +182,11 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
     const ratingMax = parseInputNumber(appliedFilters.ratingMax);
     const creatorsThreshold = presetThreshold(appliedFilters.creators, thresholds.creators);
     const videosThreshold = presetThreshold(appliedFilters.videos, thresholds.videos);
+    const searchQuery = (appliedFilters.search ?? "").trim().toLowerCase();
 
     return shops
       .filter((shop) => {
+        if (searchQuery && !shop.name.toLowerCase().includes(searchQuery)) return false;
         if (recentMin !== null && shop.recentSales < recentMin) return false;
         if (recentMax !== null && shop.recentSales > recentMax) return false;
         if (totalMin !== null && shop.totalSales < totalMin) return false;
@@ -288,6 +301,7 @@ function SmallShopList({ hidden }: { hidden: boolean }) {
             </div>
           </div>
           <div className="filter-grid shop-filter-grid">
+            <div className="filter-block search-filter"><label htmlFor="shop-search">搜索店铺</label><div className="search-input"><Search size={15} /><input id="shop-search" type="search" value={draftFilters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="输入店铺名称" /></div></div>
             <RangeInput label="近 7 天销量" minValue={draftFilters.recentMin} maxValue={draftFilters.recentMax} onMinChange={(value) => updateFilter("recentMin", value)} onMaxChange={(value) => updateFilter("recentMax", value)} />
             <RangeInput label="总销量" minValue={draftFilters.totalMin} maxValue={draftFilters.totalMax} onMinChange={(value) => updateFilter("totalMin", value)} onMaxChange={(value) => updateFilter("totalMax", value)} />
             <RangeInput label="近 7 天 GMV (£)" minValue={draftFilters.recentGmvMin} maxValue={draftFilters.recentGmvMax} onMinChange={(value) => updateFilter("recentGmvMin", value)} onMaxChange={(value) => updateFilter("recentGmvMax", value)} />

@@ -13,6 +13,7 @@ export type PercentilePreset = "all" | "p15" | "p20" | "p50";
 export type ProductPeriod = "7d" | "30d";
 
 export interface Product {
+  originalIndex: number;
   id: string;
   url: string;
   name: string;
@@ -33,6 +34,7 @@ export interface Product {
 }
 
 export interface Filters {
+  search: string;
   totalMin: string;
   totalMax: string;
   recentMin: string;
@@ -89,6 +91,7 @@ export interface Shop {
 }
 
 export interface ShopFilters {
+  search: string;
   recentMin: string;
   recentMax: string;
   totalMin: string;
@@ -130,6 +133,7 @@ export interface SellerRank {
 }
 
 export interface SellerRankFilters {
+  search: string;
   salesAmountMin: string;
   salesAmountMax: string;
   salesMin: string;

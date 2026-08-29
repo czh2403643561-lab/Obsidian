@@ -137,6 +137,12 @@ a { color: inherit; text-decoration: none; }
 .text-button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--purple); font-size: 12px; padding: 5px 2px; }
 .text-button:hover { color: var(--purple-dark); }
 .filter-grid { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr 1fr; gap: 18px; }
+.search-filter { grid-column: 1 / -1; }
+.search-input { position: relative; }
+.search-input > svg { position: absolute; top: 10px; left: 11px; color: var(--purple); pointer-events: none; }
+.search-input input { width: 100%; height: 36px; padding: 0 11px 0 33px; color: #4e5a73; background: #fafbfe; border: 1px solid #e7eaf2; border-radius: 8px; outline: 0; font-size: 13px; transition: .2s; }
+.search-input input:focus { border-color: #9a92fa; box-shadow: 0 0 0 3px #f0eeff; }
+.search-input input::placeholder { color: #b7bdca; }
 .filter-block label { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; color: #536077; font-size: 12px; font-weight: 650; }
 .label-help { color: #a7afc0; display: inline-flex; }
 .range-inputs { display: flex; align-items: center; gap: 7px; }
@@ -216,8 +222,6 @@ tbody tr:last-child td { border-bottom: 0; }
 .seller-col-category { width: 12%; }
 .seller-col-sales-amount, .seller-col-sales, .seller-col-products, .seller-col-creators, .seller-col-videos, .seller-col-lives { width: 11%; }
 .seller-category { display: block; overflow: hidden; color: #59657d; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.product-table th:nth-child(n+3):nth-child(-n+8), .product-table td:nth-child(n+3):nth-child(-n+8) { text-align: right; font-variant-numeric: tabular-nums; }
-.product-table th:nth-child(n+3):nth-child(-n+8) .sort-button { justify-content: flex-end; width: 100%; }
 .shop-number-column, .seller-number-column { padding-right: 10px; padding-left: 10px; text-align: center; font-variant-numeric: tabular-nums; }
 .shop-number-column .sort-button, .seller-number-column .sort-button { justify-content: center; width: 100%; }
 .shop-number-column .metric-value, .shop-number-column .metric-label, .seller-number-column .metric-value { text-align: center; }
@@ -233,7 +237,13 @@ tbody tr:last-child td { border-bottom: 0; }
 .seller-table[data-sort-field="promotedProductCount"] :is(th, td):nth-child(5),
 .seller-table[data-sort-field="creators"] :is(th, td):nth-child(6),
 .seller-table[data-sort-field="videos"] :is(th, td):nth-child(7),
-.seller-table[data-sort-field="lives"] :is(th, td):nth-child(8) { background: var(--purple-column-highlight); }
+.seller-table[data-sort-field="lives"] :is(th, td):nth-child(8),
+.product-table[data-sort-field="price"] :is(th, td):nth-child(3),
+.product-table[data-sort-field="recentSales"] :is(th, td):nth-child(4),
+.product-table[data-sort-field="totalSales"] :is(th, td):nth-child(5),
+.product-table[data-sort-field="creators"] :is(th, td):nth-child(6),
+.product-table[data-sort-field="videos"] :is(th, td):nth-child(7),
+.product-table[data-sort-field="commissionRate"] :is(th, td):nth-child(8) { background: var(--purple-column-highlight); }
 .shop-name-link { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .shop-name-link:hover strong { color: var(--purple); }
 .shop-name-link > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
