@@ -277,7 +277,7 @@ export interface OpportunityTranslationCache {
   entries: OpportunityTranslationEntry[];
 }
 
-export type BusinessAnalysisTab = "overview" | "products";
+export type BusinessAnalysisTab = "overview" | "products" | "maintenance";
 export type BusinessSortField = "cardGmv" | "skuOrders" | "impressions" | "clicks" | "ctr" | "addToCartRate" | "ctor" | "mallImpressions" | "mallCtr" | "units" | "customers" | "aov" | "addToCarts" | "uniqueImpressions" | "uniqueClicks" | "uniqueCtr" | "addToCartUsers" | "uniqueAddToCartRate" | "uniqueCtor" | "mallClicks" | "mallUniqueClicks" | "mallCustomers" | "mallCtor" | "mallGmv" | "mallUnits";
 
 export interface BusinessCardMetrics {
@@ -377,6 +377,13 @@ export interface BusinessProductFilters {
 export type BusinessMetricView = "core" | "card" | "dedup" | "mall";
 export type BusinessComparisonMode = "current" | "comparison";
 export type BusinessSortBasis = "current" | "change";
+export type BusinessMaintenancePriority = "priority" | "watch" | "healthy" | "insufficient";
+
+export interface BusinessMaintenanceFilters {
+  priority: BusinessMaintenancePriority | "all";
+  diagnosis: string;
+  search: string;
+}
 
 export interface BusinessAnalysisState {
   batches: BusinessBatch[];
@@ -387,6 +394,7 @@ export interface BusinessAnalysisState {
   metricView: BusinessMetricView;
   visibleColumns: BusinessSortField[];
   comparisonMode?: BusinessComparisonMode;
+  maintenanceFilters?: BusinessMaintenanceFilters;
   cardTrendMetrics: Array<"gmv" | "skuOrders" | "impressions" | "clicks" | "ctr" | "addToCartRate" | "ctor" | "aov">;
   mallTrendMetrics: Array<"gmv" | "impressions" | "clicks" | "ctr" | "ctor">;
 }
