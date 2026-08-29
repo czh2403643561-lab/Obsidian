@@ -341,9 +341,9 @@ tbody tr:last-child td { border-bottom: 0; }
 .business-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .business-chart-legend i { width: 8px; height: 8px; border-radius: 50%; }
 .business-chart-legend small { margin-left: auto; color: #a1a9b8; font-size: 10px; }
-.business-chart svg { width: 100%; height: 210px; overflow: visible; }
+.business-chart svg { width: 100%; height: 252px; overflow: visible; }
 .business-chart svg text { fill: #a1a9b8; font-size: 10px; }
-.business-chart-axis { stroke: #e7eaf2; stroke-width: 1; }
+.business-chart-grid { stroke: #e7eaf2; stroke-width: 1; stroke-dasharray: 2 3; }
 .business-chart-empty { padding: 45px; color: #9ca5b7; font-size: 12px; text-align: center; border-top: 1px solid #eef0f5; }
 .business-mall-section { margin-top: 24px; }
 .business-section-heading { display: flex; align-items: end; justify-content: space-between; margin: 0 2px 11px; }
@@ -355,18 +355,27 @@ tbody tr:last-child td { border-bottom: 0; }
 .business-quality p { margin: 8px 0 0; font-size: 12px; }
 .business-filter-grid { grid-template-columns: repeat(4, 1fr); }
 .business-filter-grid .search-filter { grid-column: 1 / -1; }
-.business-products-card { margin-top: 15px; }
+.business-products-card { margin-top: 15px; overflow: visible; }
+.business-products-card .table-wrap { overflow: auto; border-radius: 0 0 14px 14px; }
 .business-column-settings { position: relative; }
 .business-column-settings summary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; color: var(--purple); background: #faf9ff; border: 1px solid #dedaff; border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 650; list-style: none; }
 .business-column-settings summary::-webkit-details-marker { display: none; }
-.business-column-settings > div { position: absolute; z-index: 3; right: 0; top: 37px; display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 8px 14px; width: 355px; padding: 13px; color: #59657d; background: white; border: 1px solid #e2e5ef; border-radius: 9px; box-shadow: 0 13px 28px rgba(38, 54, 88, .13); font-size: 11px; }
+.business-column-settings > div { position: absolute; z-index: 5; right: 0; top: 37px; display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 8px 14px; width: 355px; padding: 13px; color: #59657d; background: white; border: 1px solid #e2e5ef; border-radius: 9px; box-shadow: 0 13px 28px rgba(38, 54, 88, .13); font-size: 11px; }
 .business-column-settings label { display: flex; align-items: center; gap: 6px; }
 .business-column-settings input { accent-color: var(--purple); }
-.business-product-table { min-width: 1450px; }
+.business-product-table { min-width: 0; table-layout: fixed; }
+.business-product-table.has-extra-columns { min-width: 1550px; }
+.business-product-table:not(.has-extra-columns) .business-product-name-col { width: 34%; }
+.business-product-table:not(.has-extra-columns) .business-metric-col { width: 7.333%; }
+.business-product-table.has-extra-columns .business-product-name-col { width: 360px; }
+.business-product-table.has-extra-columns .business-metric-col { width: 118px; }
 .business-product-table th:not(.business-product-name), .business-product-table td:not(.business-product-name) { padding-right: 12px; padding-left: 12px; text-align: right; font-variant-numeric: tabular-nums; }
-.business-product-table td { height: 74px; color: #39455e; font-size: 12px; font-weight: 650; }
+.business-product-table td { height: 86px; color: #39455e; font-size: 12px; font-weight: 650; }
 .business-product-name { width: 300px; padding-left: 21px; text-align: left !important; }
-.business-product-name strong { display: block; overflow: hidden; max-width: 278px; color: #2c3852; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.business-product-link { display: flex; align-items: flex-start; gap: 6px; color: inherit; }
+.business-product-link:hover strong { color: var(--purple); }
+.business-product-link svg { flex: 0 0 auto; margin-top: 2px; color: #9d95eb; }
+.business-product-name strong { display: -webkit-box; overflow: hidden; min-height: 34px; max-width: 100%; color: #2c3852; font-size: 12px; line-height: 1.42; text-overflow: ellipsis; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .business-product-name small { display: inline-block; margin-top: 6px; color: #a0a8b8; font-size: 10px; }
 .business-product-name em { display: inline-block; margin-left: 7px; padding: 3px 5px; color: #69758a; background: #f2f4f8; border-radius: 4px; font-size: 9px; font-style: normal; }
 .business-active-sort { background: var(--purple-column-highlight) !important; }
