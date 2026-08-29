@@ -9,6 +9,8 @@ import {
   CircleHelp,
   CloudUpload,
   Check,
+  Bookmark,
+  BookmarkCheck,
   ExternalLink,
   FileSpreadsheet,
   Filter,
@@ -23,12 +25,18 @@ import {
 } from "lucide-react";
 import { parseProductWorkbook } from "./parser";
 import ShopBoard from "./ShopBoard";
+import CandidatePool from "./CandidatePool";
 import { clearWorkspaceData, resetPersistedState, usePersistedState } from "./persistence";
 import type {
   Filters,
   PercentilePreset,
   Product,
   ProductPeriod,
+  CandidateProduct,
+  CandidateShop,
+  CandidateShopInput,
+  CandidateShopSource,
+  CandidateWorkspaceState,
   SortDirection,
   SortField,
 } from "./types";
@@ -85,7 +93,9 @@ interface ProductWorkspaceState {
   activePeriod: ProductPeriod;
 }
 
-interface UiState { activeModule: "products" | "shops"; }
+interface UiState { activeModule: "products" | "shops" | "candidates"; }
+
+const candidateKey = (id: string, url: string) => (url.trim() || id.trim()).toLowerCase();
 
 const presetName = (preset: PercentilePreset): string => {
   if (preset === "p15") return "最低 15%";
@@ -209,6 +219,7 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uiState, setUiState, uiRestored] = usePersistedState<UiState>("ui", () => ({ activeModule: "products" }));
   const [productWorkspace, setProductWorkspace, productRestored] = usePersistedState<ProductWorkspaceState>("products", () => ({ productDatasets: {}, activePeriod: "7d" }));
+  const [candidateWorkspace, setCandidateWorkspace, candidatesRestored] = usePersistedState<CandidateWorkspaceState>("candidates", () => ({ products: [], shops: [] }));
   const activeModule = uiState.activeModule;
   const setActiveModule = (activeModule: UiState["activeModule"]) => setUiState({ activeModule });
   const productDatasets = productWorkspace.productDatasets;
@@ -228,6 +239,8 @@ function App() {
   const parseNotice = activeDataset?.parseNotice ?? "";
   const foundHeaderCount = activeDataset?.foundHeaderCount ?? 0;
   const hasAnyProductData = Boolean(productDatasets["7d"] || productDatasets["30d"]);
+  const candidateProducts = candidateWorkspace.products;
+  const candidateShops = candidateWorkspace.shops;
 
   useEffect(() => {
     const needsOriginalIndexes = Object.values(productDatasets).some((dataset) => dataset?.products.some((product) => !Number.isInteger(product.originalIndex)));
@@ -309,6 +322,28 @@ function App() {
     return { ...current, [activePeriod]: { ...dataset, draftFilters: { ...initialFilters }, appliedFilters: { ...initialFilters } } };
   });
 
+  const toggleProductCandidate = (product: Product, period: ProductPeriod) => {
+    const key = candidateKey(product.id, product.url);
+    setCandidateWorkspace((current) => {
+      const existing = current.products.find((candidate) => candidate.key === key);
+      const capturedAt = new Date().toISOString();
+      const snapshot = { period, capturedAt, product };
+      if (!existing) return { ...current, products: [{ key, id: product.id, url: product.url, name: product.name, coverUrl: product.coverUrl, shopName: product.shopName, snapshots: { [period]: snapshot }, addedAt: capturedAt, updatedAt: capturedAt }, ...current.products] };
+      return { ...current, products: current.products.map((candidate) => candidate.key === key ? { ...candidate, id: product.id, url: product.url, name: product.name, coverUrl: product.coverUrl, shopName: product.shopName, snapshots: { ...candidate.snapshots, [period]: snapshot }, updatedAt: capturedAt } : candidate) };
+    });
+  };
+
+  const toggleShopCandidate = (shop: CandidateShopInput, source: CandidateShopSource) => {
+    const key = candidateKey(shop.id, shop.url);
+    setCandidateWorkspace((current) => {
+      const existing = current.shops.find((candidate) => candidate.key === key);
+      const capturedAt = new Date().toISOString();
+      const snapshot = { source, capturedAt, metrics: { salesAmount: shop.salesAmount, recentSales: shop.recentSales, totalSales: shop.totalSales, recentGmv: shop.recentGmv, promotedProductCount: shop.promotedProductCount, creators: shop.creators, videos: shop.videos, lives: shop.lives } };
+      if (!existing) return { ...current, shops: [{ key, id: shop.id, url: shop.url, name: shop.name, sources: [source], snapshots: { [source]: snapshot }, addedAt: capturedAt, updatedAt: capturedAt }, ...current.shops] };
+      return { ...current, shops: current.shops.map((candidate) => candidate.key === key ? { ...candidate, id: shop.id, url: shop.url, name: shop.name, sources: [...new Set([...candidate.sources, source])], snapshots: { ...candidate.snapshots, [source]: snapshot }, updatedAt: capturedAt } : candidate) };
+    });
+  };
+
   const loadFile = async (file?: File) => {
     if (!file) return;
     setError("");
@@ -376,9 +411,10 @@ function App() {
         <nav className="topnav" aria-label="主导航">
           <button type="button" className={activeModule === "products" ? "active" : ""} onClick={() => setActiveModule("products")}><LayoutDashboard size={16} /> 商品列表</button>
           <button type="button" className={activeModule === "shops" ? "active" : ""} onClick={() => setActiveModule("shops")}><Store size={16} /> 店铺榜单</button>
+          <button type="button" className={activeModule === "candidates" ? "active" : ""} onClick={() => setActiveModule("candidates")}><Bookmark size={16} /> 候选池</button>
         </nav>
         <div className="topbar-right">
-          <div className="local-badge"><span className="status-dot" /> {uiRestored && productRestored ? "已本地保存" : "正在恢复…"}</div>
+          <div className="local-badge"><span className="status-dot" /> {uiRestored && productRestored && candidatesRestored ? "已本地保存" : "正在恢复…"}</div>
           <button className="clear-local-button" type="button" onClick={() => void clearLocalData()} disabled={isClearing}>{isClearing ? "正在清除…" : "清除本地数据"}</button>
           <div className="avatar">O</div>
         </div>
@@ -617,6 +653,9 @@ function App() {
                           <a className="view-link" href={product.url} target="_blank" rel="noreferrer" title="查看商品">
                             <ExternalLink size={15} /> <span>查看商品</span>
                           </a>
+                          <button className={`table-candidate-button${candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? " saved" : ""}`} onClick={() => toggleProductCandidate(product, activePeriod)} title="收藏到候选池">
+                            {candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}<span>{candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? "已收藏" : "收藏"}</span>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -632,7 +671,8 @@ function App() {
 
         {!hasAnyProductData && !error && <EmptyState onPick={() => fileInputRef.current?.click()} />}
       </main>
-      <ShopBoard hidden={activeModule !== "shops"} />
+      <ShopBoard hidden={activeModule !== "shops"} candidateShops={candidateShops} onToggleCandidate={toggleShopCandidate} />
+      {activeModule === "candidates" && <CandidatePool products={candidateProducts} shops={candidateShops} onRemoveProduct={(key) => setCandidateWorkspace((current) => ({ ...current, products: current.products.filter((candidate) => candidate.key !== key) }))} onRemoveShop={(key) => setCandidateWorkspace((current) => ({ ...current, shops: current.shops.filter((candidate) => candidate.key !== key) }))} />}
       <footer className="footer"><span>Obsidian 选品工作台</span><span>EchoTik 数据 · 本地解析</span></footer>
     </div>
   );

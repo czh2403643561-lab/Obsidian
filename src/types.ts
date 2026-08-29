@@ -152,3 +152,68 @@ export interface SellerRankParseResult {
   missingHeaders: string[];
   skippedRows: number;
 }
+
+export type CandidateShopSource = "小店列表" | "跨境卖家榜" | "本土卖家榜";
+
+export interface CandidateProductSnapshot {
+  period: ProductPeriod;
+  capturedAt: string;
+  product: Product;
+}
+
+export interface CandidateProduct {
+  key: string;
+  id: string;
+  url: string;
+  name: string;
+  coverUrl: string;
+  shopName: string;
+  snapshots: Partial<Record<ProductPeriod, CandidateProductSnapshot>>;
+  addedAt: string;
+  updatedAt: string;
+}
+
+export interface CandidateShopSnapshot {
+  source: CandidateShopSource;
+  capturedAt: string;
+  metrics: {
+    salesAmount?: number;
+    recentSales?: number;
+    totalSales?: number;
+    recentGmv?: number;
+    promotedProductCount: number;
+    creators: number;
+    videos: number;
+    lives: number;
+  };
+}
+
+export interface CandidateShopInput {
+  id: string;
+  url: string;
+  name: string;
+  promotedProductCount: number;
+  creators: number;
+  videos: number;
+  lives: number;
+  salesAmount?: number;
+  recentSales?: number;
+  totalSales?: number;
+  recentGmv?: number;
+}
+
+export interface CandidateShop {
+  key: string;
+  id: string;
+  url: string;
+  name: string;
+  sources: CandidateShopSource[];
+  snapshots: Partial<Record<CandidateShopSource, CandidateShopSnapshot>>;
+  addedAt: string;
+  updatedAt: string;
+}
+
+export interface CandidateWorkspaceState {
+  products: CandidateProduct[];
+  shops: CandidateShop[];
+}
