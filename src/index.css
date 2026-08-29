@@ -311,6 +311,12 @@ tbody tr:last-child td { border-bottom: 0; }
 .radar-trend-status.new { color: #4d70a0; background: #edf4ff; }
 .radar-trend-status.crowded { color: #bb5a68; background: #fff0f2; }
 .radar-trend-status.cooling { color: #8b6a43; background: #fff5e8; }
+.radar-trend-status.stable { color: #68758a; background: #f1f3f7; }
+.radar-translation-action { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.radar-translate-button { display: inline-flex; align-items: center; gap: 5px; }
+.radar-translation-action small { color: #9ca5b5; font-size: 11px; white-space: nowrap; }
+.radar-original-text { display: block; overflow: hidden; margin-top: 3px; color: #a2aabb; font-size: 10px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.radar-table td .radar-original-text { margin-top: 2px; }
 .shop-filter-grid { grid-template-columns: repeat(4, 1fr); }
 .seller-filter-grid { grid-template-columns: repeat(3, 1fr); }
 .shop-table, .seller-table { min-width: 0; }
