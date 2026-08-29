@@ -326,6 +326,7 @@ function App() {
     const key = candidateKey(product.id, product.url);
     setCandidateWorkspace((current) => {
       const existing = current.products.find((candidate) => candidate.key === key);
+      if (existing?.snapshots[period]) return { ...current, products: current.products.filter((candidate) => candidate.key !== key) };
       const capturedAt = new Date().toISOString();
       const snapshot = { period, capturedAt, product };
       if (!existing) return { ...current, products: [{ key, id: product.id, url: product.url, name: product.name, coverUrl: product.coverUrl, shopName: product.shopName, snapshots: { [period]: snapshot }, addedAt: capturedAt, updatedAt: capturedAt }, ...current.products] };
@@ -337,6 +338,7 @@ function App() {
     const key = candidateKey(shop.id, shop.url);
     setCandidateWorkspace((current) => {
       const existing = current.shops.find((candidate) => candidate.key === key);
+      if (existing?.snapshots[source]) return { ...current, shops: current.shops.filter((candidate) => candidate.key !== key) };
       const capturedAt = new Date().toISOString();
       const snapshot = { source, capturedAt, metrics: { salesAmount: shop.salesAmount, recentSales: shop.recentSales, totalSales: shop.totalSales, recentGmv: shop.recentGmv, promotedProductCount: shop.promotedProductCount, creators: shop.creators, videos: shop.videos, lives: shop.lives } };
       if (!existing) return { ...current, shops: [{ key, id: shop.id, url: shop.url, name: shop.name, sources: [source], snapshots: { [source]: snapshot }, addedAt: capturedAt, updatedAt: capturedAt }, ...current.shops] };
@@ -652,7 +654,7 @@ function App() {
                         <td className="action-column">
                           <div className="product-action-stack"><a className="view-link" href={product.url} target="_blank" rel="noreferrer" title="查看商品">
                             <ExternalLink size={15} /> <span>查看商品</span>
-                          </a><button aria-label="收藏到候选池" className={`table-candidate-button${candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? " saved" : ""}`} onClick={() => toggleProductCandidate(product, activePeriod)} title="收藏到候选池">
+                          </a><button aria-label={candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? "取消收藏" : "收藏到候选池"} className={`table-candidate-button${candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? " saved" : ""}`} onClick={() => toggleProductCandidate(product, activePeriod)} title={candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? "取消收藏" : "收藏到候选池"}>
                             {candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? <BookmarkCheck size={19} /> : <Bookmark size={19} />}
                           </button></div>
                         </td>
