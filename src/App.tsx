@@ -650,12 +650,11 @@ function App() {
                         <td><span className="metric-value">{formatCount(product.videos)}</span></td>
                         <td><span className="commission-badge">{product.commissionRate ? formatRate(product.commissionRate) : "—"}</span></td>
                         <td className="action-column">
-                          <a className="view-link" href={product.url} target="_blank" rel="noreferrer" title="查看商品">
+                          <div className="product-action-stack"><a className="view-link" href={product.url} target="_blank" rel="noreferrer" title="查看商品">
                             <ExternalLink size={15} /> <span>查看商品</span>
-                          </a>
-                          <button className={`table-candidate-button${candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? " saved" : ""}`} onClick={() => toggleProductCandidate(product, activePeriod)} title="收藏到候选池">
-                            {candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}<span>{candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? "已收藏" : "收藏"}</span>
-                          </button>
+                          </a><button aria-label="收藏到候选池" className={`table-candidate-button${candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? " saved" : ""}`} onClick={() => toggleProductCandidate(product, activePeriod)} title="收藏到候选池">
+                            {candidateProducts.some((candidate) => candidate.key === candidateKey(product.id, product.url) && candidate.snapshots[activePeriod]) ? <BookmarkCheck size={19} /> : <Bookmark size={19} />}
+                          </button></div>
                         </td>
                       </tr>
                     ))}
