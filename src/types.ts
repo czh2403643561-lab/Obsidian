@@ -375,15 +375,18 @@ export interface BusinessProductFilters {
 }
 
 export type BusinessMetricView = "core" | "card" | "dedup" | "mall";
+export type BusinessComparisonMode = "current" | "comparison";
+export type BusinessSortBasis = "current" | "change";
 
 export interface BusinessAnalysisState {
   batches: BusinessBatch[];
   activeBatchId: string | null;
   activeTab: BusinessAnalysisTab;
   filters: BusinessProductFilters;
-  sort: { field: BusinessSortField | null; direction: SortDirection | null };
+  sort: { field: BusinessSortField | null; direction: SortDirection | null; basis?: BusinessSortBasis };
   metricView: BusinessMetricView;
   visibleColumns: BusinessSortField[];
+  comparisonMode?: BusinessComparisonMode;
   cardTrendMetrics: Array<"gmv" | "skuOrders" | "impressions" | "clicks" | "ctr" | "addToCartRate" | "ctor" | "aov">;
   mallTrendMetrics: Array<"gmv" | "impressions" | "clicks" | "ctr" | "ctor">;
 }
