@@ -74,21 +74,6 @@ const sourceBreakdown = [
   { name: "其他", value: "RM0.00", share: "0%", color: "#b9c0cb", children: [], childValues: [] },
 ];
 
-const cardKpis = [
-  { label: "曝光用户数", value: "6.01K", delta: "▼ 14.3%", rank: "你已超过 85% 的同行商家" },
-  { label: "日客户数", value: "16", delta: "▼ 42.86%", rank: "你已超过 85% 的同行商家" },
-  { label: "GMV", value: "RM169.63", delta: "▼ 47.28%", rank: "你已超过 70% 的同行商家" },
-  { label: "曝光到成交转化率", value: "0.27%", delta: "▼ 33.32%", rank: "你已超过 80% 的同行商家" },
-];
-
-const trafficSources = [
-  ["搜索", "49.85% | 4.87K", "3.48K", "RM88.63", "0.31%"],
-  ["推荐", "32.10% | 3.13K", "2.33K", "RM57.29", "0.24%"],
-  ["店铺", "3.65% | 356", "57", "RM0.00", "0%"],
-  ["活动", "1.00% | 98", "69", "RM0.00", "0%"],
-  ["其他", "13.40% | 1.31K", "720", "RM23.71", "0.18%"],
-];
-
 const metricGroups = [
   {
     title: "总体表现",
@@ -154,19 +139,72 @@ function PanelTools({ onConfigure, exportLabel = true }: { onConfigure: () => vo
   );
 }
 
-function CardPerformancePage({ onConfigure }: { onConfigure: () => void }) {
+type CardPerformanceMetricKey = "uniqueImpressions" | "customers" | "gmv" | "ctor";
+type CardTrendKey = "impressions" | "skuOrders";
+
+const cardPerformanceMetrics: Array<{ key: CardPerformanceMetricKey; label: string; format: "count" | "money" | "rate" }> = [
+  { key: "uniqueImpressions", label: "曝光用户数", format: "count" },
+  { key: "customers", label: "预计客户数", format: "count" },
+  { key: "gmv", label: "商品卡 GMV", format: "money" },
+  { key: "ctor", label: "CTOR", format: "rate" },
+];
+const cardTrendLabels: Record<CardTrendKey, string> = { impressions: "曝光", skuOrders: "SKU订单" };
+const formatCardCount = (value: number | null): string => value === null ? "--" : value.toLocaleString("en-GB", { maximumFractionDigits: 0 });
+const formatCardMoney = (value: number | null, symbol: string): string => value === null ? "--" : `${symbol}${value.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatCardRate = (value: number | null): string => value === null ? "--" : `${value.toFixed(2)}%`;
+
+function CardTrendPanel({ batch }: { batch: BusinessBatch | null }) {
+  const [selected, setSelected] = useState<CardTrendKey[]>(["impressions", "skuOrders"]);
+  const toggle = (key: CardTrendKey) => setSelected((current) => current.includes(key) ? current.length === 1 ? current : current.filter((item) => item !== key) : current.length >= 2 ? current : [...current, key]);
+  const points = batch?.shopCardTrend ?? [];
+  const width = 720;
+  const height = 150;
+  const pad = { left: 42, right: 18, top: 12, bottom: 25 };
+  const x = (index: number) => pad.left + index * ((width - pad.left - pad.right) / Math.max(points.length - 1, 1));
+  const valuesFor = (key: CardTrendKey) => points.map((point) => point.metrics[key]);
+  const maxFor = (key: CardTrendKey) => Math.max(...valuesFor(key).filter((value): value is number => value !== null), 1);
+  const y = (key: CardTrendKey, value: number) => pad.top + (1 - value / maxFor(key)) * (height - pad.top - pad.bottom);
+  const colors: Record<CardTrendKey, string> = { impressions: "#18a899", skuOrders: "#6559e8" };
+  const segmentsFor = (key: CardTrendKey) => {
+    const segments: string[] = [];
+    let current: string[] = [];
+    valuesFor(key).forEach((value, index) => {
+      if (value === null) {
+        if (current.length) segments.push(current.join(" "));
+        current = [];
+      } else current.push(`${x(index)},${y(key, value)}`);
+    });
+    if (current.length) segments.push(current.join(" "));
+    return segments;
+  };
+  return <div className="hf-card-trend">
+    <header><div><h3>商品卡每日趋势</h3><span>{batch ? `${batch.startDate} – ${batch.endDate}` : "未导入周期"}</span></div><div className="hf-card-trend-options">{(Object.keys(cardTrendLabels) as CardTrendKey[]).map((key) => <button key={key} className={selected.includes(key) ? "active" : ""} onClick={() => toggle(key)}>{cardTrendLabels[key]}</button>)}</div></header>
+    {!batch || !points.length ? <div className="hf-card-trend-empty">当前未导入商品卡每日趋势数据</div> : <>
+      <div className="hf-chart-legend">{selected.map((key) => <span key={key}><i style={{ background: colors[key] }} />{cardTrendLabels[key]}</span>)}</div>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="商品卡每日趋势图">
+        {[0, 1, 2, 3].map((index) => { const lineY = pad.top + index * ((height - pad.top - pad.bottom) / 3); return <line key={index} x1={pad.left} x2={width - pad.right} y1={lineY} y2={lineY} />; })}
+        {selected.flatMap((key) => segmentsFor(key).map((segment, index) => <polyline key={`${key}-${index}`} points={segment} stroke={colors[key]} />))}
+        {points.map((point, index) => <text key={`${point.date}-${index}`} x={x(index)} y={height - 6} textAnchor="middle">{point.date.slice(5).replace("-", "/")}</text>)}
+      </svg>
+    </>}
+  </div>;
+}
+
+function CardPerformancePage({ batch, onConfigure }: { batch: BusinessBatch | null; onConfigure: () => void }) {
   const [compare, setCompare] = useState(false);
+  const summary = batch?.shopCardSummary;
   return (
     <div className="hf-card-page">
       <section className="hf-panel hf-card-kpi-panel">
-        <header className="hf-card-section-header"><div><h2>关键指标</h2><button className="hf-help-link">什么是商品卡？ <ChevronRight size={13} /></button></div><div className="hf-card-tools"><label className="hf-check-label"><input type="checkbox" checked={compare} onChange={(event) => setCompare(event.target.checked)} /> 对比趋势</label><button onClick={onConfigure}><Settings2 size={13} /> 配置指标</button><button><Download size={13} /> 导出数据</button><button className="icon-only" aria-label="其他操作"><MoreVertical size={14} /></button></div></header>
-        <div className="hf-card-kpis">{cardKpis.map((item) => <article key={item.label}><span>{item.label} <HelpCircle size={12} /></span><strong>{item.value}</strong><small>较上一周期　<em>{item.delta}</em></small><p>{item.rank.replace(/\d+%/, "")}<b>{item.rank.match(/\d+%/)?.[0]}</b> 的同行商家</p></article>)}</div>
+        <header className="hf-card-section-header"><div><h2>关键指标</h2><button className="hf-help-link">什么是商品卡？ <ChevronRight size={13} /></button></div><div className="hf-card-tools"><label className="hf-check-label"><input type="checkbox" checked={compare} disabled title="请先导入可比较的历史周期" onChange={(event) => setCompare(event.target.checked)} /> 对比趋势</label><button onClick={onConfigure}><Settings2 size={13} /> 配置指标</button><button><Download size={13} /> 导出数据</button><button className="icon-only" aria-label="其他操作"><MoreVertical size={14} /></button></div></header>
+        <div className="hf-card-kpis">{cardPerformanceMetrics.map((item) => { const value = summary?.[item.key] ?? null; return <article key={item.key}><span>{item.label} <HelpCircle size={12} /></span><strong>{item.format === "money" ? formatCardMoney(value, batch?.currencySymbol ?? "") : item.format === "rate" ? formatCardRate(value) : formatCardCount(value)}</strong><small>较上一周期　<em className="neutral">--</em></small><p>当前导出文件暂无同行基准</p></article>; })}</div>
+        <CardTrendPanel batch={batch} />
       </section>
       <section className="hf-panel hf-traffic-panel">
         <header className="hf-card-section-header"><h2>流量来源</h2><PanelTools onConfigure={onConfigure} exportLabel={false} /></header>
-        <div className="hf-table-scroll"><table className="hf-traffic-table"><thead><tr><th>流量来源</th><th>页面浏览次数比率｜浏览次数 <ArrowDown size={12} /></th><th>曝光用户数 <ArrowDown size={12} /></th><th>GMV <ArrowDown size={12} /></th><th>曝光到成交转化率</th><th>操作</th></tr></thead><tbody>{trafficSources.map((row, index) => <tr key={row[0]}><td><span className={index < 2 || index === 3 ? "expandable" : ""}>{index < 2 || index === 3 ? <ChevronRight size={13} /> : null}{row[0]} <HelpCircle size={11} /></span></td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td><td><button>查看趋势</button></td></tr>)}</tbody></table></div>
+        <div className="hf-table-scroll"><table className="hf-traffic-table"><thead><tr><th>流量来源</th><th>页面浏览次数比率｜浏览次数 <ArrowDown size={12} /></th><th>曝光用户数 <ArrowDown size={12} /></th><th>GMV <ArrowDown size={12} /></th><th>曝光到成交转化率</th><th>操作</th></tr></thead><tbody><tr><td colSpan={6}><div className="hf-traffic-empty"><strong>当前导出文件未提供商品卡流量来源拆分</strong><span>搜索、推荐、店铺、活动等来源数据暂无法从本期 Excel 还原。</span></div></td></tr></tbody></table></div>
       </section>
-      <section className="hf-panel hf-potential-panel"><header className="hf-card-section-header"><div><h2>高潜力商品卡 <HelpCircle size={12} /></h2><button className="hf-diagnosis-link">了解更多诊断信息 <ChevronRight size={13} /></button></div><PanelTools onConfigure={onConfigure} /></header><table><thead><tr><th>商品卡名称</th><th>前 3 项建议操作</th><th>过去 7 天访问人数</th><th>GMV</th><th>操作</th></tr></thead></table><div className="hf-potential-empty"><PackageOpen size={28} /><span>暂无数据</span></div></section>
+      <section className="hf-panel hf-potential-panel"><header className="hf-card-section-header"><div><h2>高潜力商品卡 <HelpCircle size={12} /></h2><button className="hf-diagnosis-link">了解更多诊断信息 <ChevronRight size={13} /></button></div><PanelTools onConfigure={onConfigure} /></header><table><thead><tr><th>商品卡名称</th><th>前 3 项建议操作</th><th>过去 7 天访问人数</th><th>GMV</th><th>操作</th></tr></thead></table><div className="hf-potential-empty"><PackageOpen size={28} /><span>当前导出文件暂无官方高潜力诊断数据</span></div></section>
     </div>
   );
 }
@@ -350,7 +388,7 @@ function AnalyticsShell() {
         {section === "store" ? <AnalyticsSidebar /> : <ProductCardSidebar page={cardPage} onPage={(page) => { setCardPage(page); setDetailProduct(null); }} />}
         <div className="hf-main-content">
           {notice && <div className="hf-delay-notice"><AlertTriangleIcon /><span>目前，部分数据更新存在延迟，因此展示的数据可能无法反映最新的业务状态。我们的团队正在努力解决此问题。请稍后再来查看。</span><button aria-label="关闭提示" onClick={() => setNotice(false)}><X size={14} /></button></div>}
-          {section === "store" ? <><div className="hf-dashboard-grid"><KeyMetricsPanel batch={overviewBatch} /><RankingPanel /></div><BreakdownPanel batch={overviewBatch} />{overviewError && <div className="hf-overview-error" role="alert"><X size={13} />{overviewError}</div>}</> : detailProduct ? <ProductDetailPlaceholder name={detailProduct} onBack={() => setDetailProduct(null)} /> : cardPage === "performance" ? <CardPerformancePage onConfigure={openMetricModal} /> : <CardDetailsPage batch={overviewBatch} onConfigure={openMetricModal} onOpenProduct={setDetailProduct} />}
+          {section === "store" ? <><div className="hf-dashboard-grid"><KeyMetricsPanel batch={overviewBatch} /><RankingPanel /></div><BreakdownPanel batch={overviewBatch} />{overviewError && <div className="hf-overview-error" role="alert"><X size={13} />{overviewError}</div>}</> : detailProduct ? <ProductDetailPlaceholder name={detailProduct} onBack={() => setDetailProduct(null)} /> : cardPage === "performance" ? <CardPerformancePage batch={overviewBatch} onConfigure={openMetricModal} /> : <CardDetailsPage batch={overviewBatch} onConfigure={openMetricModal} onOpenProduct={setDetailProduct} />}
         </div>
       </div>}
       <input ref={overviewInput} type="file" multiple accept=".xlsx,.xls" hidden onChange={(event) => void importOverview(event.target.files ?? [])} />
