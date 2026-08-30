@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import type { BusinessBatch, BusinessCardMetrics, BusinessMallMetrics, BusinessProductHistoryBatch, BusinessProductRecord, BusinessQualityIssue, BusinessSourceStatus, BusinessTrendPoint } from "./types";
+import type { BusinessBatch, BusinessCardMetrics, BusinessMallMetrics, BusinessOverviewBreakdown, BusinessOverviewMetrics, BusinessOverviewTrend, BusinessProductHistoryBatch, BusinessProductRecord, BusinessQualityIssue, BusinessSourceStatus, BusinessTrendPoint } from "./types";
 
 type Rows = unknown[][];
 type DetectedFile = { file: File; source: BusinessSourceStatus; workbook: XLSX.WorkBook; dateRange: { startDate: string; endDate: string } };
@@ -13,6 +13,9 @@ const productCardAliases: Record<keyof BusinessCardMetrics, string[]> = { ...car
 const mallAliases: Record<keyof BusinessMallMetrics, string[]> = {
   impressions: ["商城页商品曝光次数"], clicks: ["商城页商品点击量"], uniqueClicks: ["商城页去重商品点击量"], customers: ["预计商城页客户数"], ctr: ["商城页点击率"], ctor: ["商城页点击成交转化率SKU订单"], gmv: ["商城页GMV"], units: ["商城页商品成交件数"],
 };
+const overviewAliases: Record<keyof BusinessOverviewMetrics, string[]> = {
+  gmv: ["GMV", "总GMV", "成交金额"], orders: ["订单数", "订单量", "总订单数"], skuOrders: ["SKU订单数", "SKU订单量"], units: ["商品成交件数", "成交件数", "商品成交数量"],
+};
 
 const emptyCard = (): BusinessCardMetrics => ({ gmv: null, skuOrders: null, units: null, customers: null, aov: null, impressions: null, clicks: null, ctr: null, addToCarts: null, addToCartRate: null, ctor: null, uniqueImpressions: null, uniqueClicks: null, uniqueCtr: null, addToCartUsers: null, uniqueAddToCartRate: null, uniqueCtor: null });
 const emptyMall = (): BusinessMallMetrics => ({ impressions: null, clicks: null, uniqueClicks: null, customers: null, ctr: null, ctor: null, gmv: null, units: null });
@@ -22,21 +25,41 @@ const header = (value: unknown): string => text(value).replace(/[\s（）()]/g, 
 const parseNumber = (value: unknown): number | null => {
   const source = text(value).replace(/[£,$]/g, "").replace(/,/g, "").replace(/%/g, "");
   if (!source || /^(--|-|—|n\/a|null)$/i.test(source)) return null;
-  const parsed = Number(source);
-  return Number.isFinite(parsed) ? parsed : null;
+  const numeric = source.match(/-?\d+(?:\.\d+)?/);
+  const parsed = Number(numeric?.[0] ?? source);
+  if (!Number.isFinite(parsed)) return null;
+  return /▼|↓/.test(source) ? -Math.abs(parsed) : parsed;
 };
 
 const dateToIso = (value: string): string | null => {
-  const match = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!match) return null;
-  return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+  const yearFirst = value.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if (yearFirst) return `${yearFirst[1]}-${yearFirst[2].padStart(2, "0")}-${yearFirst[3].padStart(2, "0")}`;
+  const dayFirst = value.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if (!dayFirst) return null;
+  return `${dayFirst[3]}-${dayFirst[2].padStart(2, "0")}-${dayFirst[1].padStart(2, "0")}`;
 };
 
 const extractDateRange = (rows: Rows): { startDate: string; endDate: string } | null => {
   const source = rows.slice(0, 5).flat().map(text).find((value) => value.includes("数据分析日期")) ?? "";
-  const matches = [...source.matchAll(/(\d{1,2}\/\d{1,2}\/\d{4})/g)].map((match) => dateToIso(match[1])).filter((value): value is string => Boolean(value));
+  const matches = [...source.matchAll(/(\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})/g)].map((match) => dateToIso(match[1])).filter((value): value is string => Boolean(value));
   return matches.length >= 2 ? { startDate: matches[0], endDate: matches[1] } : null;
 };
+
+const extractComparisonRange = (rows: Rows, current: { startDate: string; endDate: string }): { startDate: string; endDate: string } => {
+  const candidates = rows.flat().map(text).filter((value) => /对比|比较|上一周期|上个周期/.test(value));
+  for (const candidate of candidates) {
+    const dates = [...candidate.matchAll(/(?:\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})/g)].map((match) => dateToIso(match[0])).filter((value): value is string => Boolean(value));
+    if (dates.length >= 2) return { startDate: dates[0], endDate: dates[1] };
+  }
+  return comparisonRange(current);
+};
+
+const shiftDate = (iso: string, days: number): string => { const date = new Date(`${iso}T00:00:00Z`); date.setUTCDate(date.getUTCDate() + days); return date.toISOString().slice(0, 10); };
+
+function comparisonRange(range: { startDate: string; endDate: string }): { startDate: string; endDate: string } {
+  const duration = Math.max(0, Math.round((Date.parse(`${range.endDate}T00:00:00Z`) - Date.parse(`${range.startDate}T00:00:00Z`)) / 86400000));
+  return { startDate: shiftDate(range.startDate, -(duration + 1)), endDate: shiftDate(range.startDate, -1) };
+}
 
 const rowsFor = (workbook: XLSX.WorkBook, sheet: string): Rows => XLSX.utils.sheet_to_json(workbook.Sheets[sheet], { header: 1, defval: "", raw: false }) as Rows;
 
@@ -72,6 +95,35 @@ const mallMetrics = (row: unknown[], columns: Column[]): BusinessMallMetrics => 
   return metrics;
 };
 
+const overviewMetrics = (row: unknown[], columns: Column[], group = "全部"): BusinessOverviewMetrics => {
+  const metrics = {} as BusinessOverviewMetrics;
+  (Object.keys(overviewAliases) as Array<keyof BusinessOverviewMetrics>).forEach((key) => { metrics[key] = valueByAliases(row, columns, group, overviewAliases[key]); });
+  return metrics;
+};
+
+const nullableSum = (values: Array<number | null>): number | null => { const present = values.filter((value): value is number => value !== null); return present.length ? present.reduce((sum, value) => sum + value, 0) : null; };
+
+const parseOverviewSummary = (workbook: XLSX.WorkBook): { metrics: BusinessOverviewMetrics; growth: BusinessOverviewMetrics | null; breakdown: BusinessOverviewBreakdown } => {
+  const rows = rowsFor(workbook, "摘要");
+  const { columns, headerRow } = findGroupedColumns(rows);
+  const dataRows = rows.slice(headerRow + 1);
+  const total = dataRows.find((row) => text(row[0]) === "总计值") ?? dataRows[0];
+  if (!total) throw new Error("摘要页缺少总计值。");
+  const growthRow = dataRows.find((row) => /成长分数|增长率|环比/.test(text(row[0]))) ?? null;
+  const value = (row: unknown[] | null, group: string, aliases: string[]): number | null => row ? valueByAliases(row, columns, group, aliases) : null;
+  const liveMerchant = value(total, "商家直播", ["商家直播归因GMV", "商家直播GMV"]);
+  const liveAffiliate = value(total, "联盟", ["达人直播归因GMV", "联盟直播归因GMV"]);
+  const videoMerchant = value(total, "商家视频", ["商家视频归因GMV", "商家视频GMV"]);
+  const videoAffiliate = value(total, "联盟", ["联盟视频归因GMV"]);
+  const breakdown: BusinessOverviewBreakdown = {
+    live: nullableSum([liveMerchant, liveAffiliate]),
+    video: nullableSum([videoMerchant, videoAffiliate]),
+    productCard: value(total, "商家商品卡", ["商家商品卡GMV", "归因GMV"]),
+    liveMerchant, liveAffiliate, videoMerchant, videoAffiliate,
+  };
+  return { metrics: overviewMetrics(total, columns), growth: growthRow ? overviewMetrics(growthRow, columns) : null, breakdown };
+};
+
 const parseSummary = <T>(workbook: XLSX.WorkBook, mapper: (row: unknown[], columns: Column[]) => T): T => {
   const rows = rowsFor(workbook, "摘要");
   const { columns, headerRow } = findGroupedColumns(rows);
@@ -101,6 +153,12 @@ const sourceFrom = async (file: File): Promise<DetectedFile> => {
   const hasCardGroup = dataRows.some((row) => row.includes("商家商品卡"));
   if (hasProductHeaders && hasCardGroup) return { file, workbook, dateRange, source: { fileName: file.name, detectedAs: "product-data" } };
   throw new Error(`无法识别“${file.name}”。请选择商品数据、商品卡专项和全部流量三份官方 Excel。`);
+};
+
+const detectCurrencySymbol = (workbook: XLSX.WorkBook): string => {
+  const values = workbook.SheetNames.flatMap((name) => rowsFor(workbook, name).flat().map(text));
+  const found = values.map((value) => value.match(/£|€|\$|¥|\bRM\b/i)?.[0]).find(Boolean);
+  return found ? (found.toUpperCase() === "RM" ? "RM" : found) : "";
 };
 
 const parseProducts = (workbook: XLSX.WorkBook): BusinessProductRecord[] => {
@@ -145,12 +203,15 @@ export const parseBusinessFiles = async (files: File[]): Promise<BusinessBatch> 
   const shopCardTrend = parseTrend(cardFile.workbook, (row, columns) => cardMetrics(row, columns));
   const shopMallSummary = parseSummary(allFile.workbook, mallMetrics);
   const shopMallTrend = parseTrend(allFile.workbook, mallMetrics);
+  const overview = parseOverviewSummary(allFile.workbook);
+  const overviewTrend = parseTrend(allFile.workbook, (row, columns) => overviewMetrics(row, columns));
+  const comparison = extractComparisonRange(rowsFor(allFile.workbook, "摘要"), cardFile.dateRange);
   const products = parseProducts(productsFile.workbook);
   const qualityIssues: BusinessQualityIssue[] = [];
   checkMetrics("店铺商品卡", shopCardSummary, qualityIssues); checkMetrics("店铺商城页", shopMallSummary, qualityIssues);
   products.forEach((product) => { checkMetrics(`商品 ${product.productId} 的商品卡`, product.card, qualityIssues); checkMetrics(`商品 ${product.productId} 的商城页`, product.mall, qualityIssues); });
   addLatestMissingWarning("商品卡趋势", shopCardTrend[shopCardTrend.length - 1], qualityIssues); addLatestMissingWarning("商城页趋势", shopMallTrend[shopMallTrend.length - 1], qualityIssues);
-  return { id: `business-${Date.now()}`, startDate: cardFile.dateRange.startDate, endDate: cardFile.dateRange.endDate, importedAt: new Date().toISOString(), sources: { productData: productsFile.source, cardTraffic: cardFile.source, allTraffic: allFile.source }, shopCardSummary, shopCardTrend, shopMallSummary, shopMallTrend, products, qualityIssues };
+  return { id: `business-${Date.now()}`, startDate: cardFile.dateRange.startDate, endDate: cardFile.dateRange.endDate, importedAt: new Date().toISOString(), sources: { productData: productsFile.source, cardTraffic: cardFile.source, allTraffic: allFile.source }, currencySymbol: detectCurrencySymbol(allFile.workbook), overviewSummary: overview.metrics, overviewComparison: overview.growth ? { startDate: comparison.startDate, endDate: comparison.endDate, growth: overview.growth } : null, overviewTrend, overviewBreakdown: overview.breakdown, shopCardSummary, shopCardTrend, shopMallSummary, shopMallTrend, products, qualityIssues };
 };
 
 export const parseBusinessProductHistoryFile = async (file: File): Promise<BusinessProductHistoryBatch> => {

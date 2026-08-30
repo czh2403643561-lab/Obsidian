@@ -303,6 +303,9 @@
 .hf-product-filter-drawer footer button { height: 27px; min-width: 48px; color: #555d67; background: #f2f3f5; border: 0; border-radius: 3px; font-size: 9px; }
 .hf-product-filter-drawer footer button.primary { color: #fff; background: var(--purple); }
 
+.hf-overview-import { height: 28px; padding: 0 9px; color: #fff; background: var(--purple); border: 0; border-radius: 3px; font-size: 9px; font-weight: 650; white-space: nowrap; }
+.hf-overview-error { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 10px; color: #a34658; background: #fff3f4; border: 1px solid #f0d5da; border-radius: 4px; font-size: 9px; }
+
 /* Product data analytics: single-product detail */
 .hf-product-detail-header { overflow: hidden; background: #fff; border: 1px solid #e7e8eb; border-radius: 4px; }
 .hf-product-detail-header > button { display: flex; align-items: center; gap: 3px; height: 32px; padding: 0 13px; color: #656c76; background: #fff; border: 0; font-size: 9px; }

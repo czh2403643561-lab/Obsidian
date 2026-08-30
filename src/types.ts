@@ -311,6 +311,34 @@ export interface BusinessMallMetrics {
   units: number | null;
 }
 
+export interface BusinessOverviewMetrics {
+  gmv: number | null;
+  orders: number | null;
+  skuOrders: number | null;
+  units: number | null;
+}
+
+export interface BusinessOverviewComparison {
+  startDate: string;
+  endDate: string;
+  growth: BusinessOverviewMetrics;
+}
+
+export interface BusinessOverviewTrend {
+  date: string;
+  metrics: BusinessOverviewMetrics;
+}
+
+export interface BusinessOverviewBreakdown {
+  live: number | null;
+  video: number | null;
+  productCard: number | null;
+  liveMerchant: number | null;
+  liveAffiliate: number | null;
+  videoMerchant: number | null;
+  videoAffiliate: number | null;
+}
+
 export interface BusinessTrendPoint<T> {
   date: string;
   metrics: T;
@@ -344,8 +372,13 @@ export interface BusinessBatch {
   sources: {
     productData: BusinessSourceStatus;
     cardTraffic: BusinessSourceStatus;
-    allTraffic: BusinessSourceStatus;
+  allTraffic: BusinessSourceStatus;
   };
+  currencySymbol: string;
+  overviewSummary: BusinessOverviewMetrics;
+  overviewComparison: BusinessOverviewComparison | null;
+  overviewTrend: BusinessOverviewTrend[];
+  overviewBreakdown: BusinessOverviewBreakdown;
   shopCardSummary: BusinessCardMetrics;
   shopCardTrend: BusinessTrendPoint<BusinessCardMetrics>[];
   shopMallSummary: BusinessMallMetrics;
