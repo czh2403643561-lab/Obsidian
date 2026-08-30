@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import type { BusinessCardMetrics, BusinessMallMetrics, BusinessProductRecord } from "../types";
-import type { UkDataPayload, UkDataSourceKey, UkMetricMap, UkMetricTrendPoint, UkParsedImport, UkProductDetailsData, UkProductTrafficData, UkStoreBusinessData, UkStoreKeywordsData } from "./types";
+import type { UkDataPayload, UkDataSourceKey, UkMetricMap, UkMetricTrendPoint, UkParsedImport, UkProductDetailsData, UkProductTrafficBreakdownData, UkProductTrafficData, UkProductSourceKey, UkStoreBusinessData, UkStoreKeywordsData } from "./types";
 
 type Rows = unknown[][];
 type Column = { group: string; field: string; index: number };
@@ -47,6 +47,7 @@ const aliases: Record<keyof BusinessCardMetrics, string[]> = {
   gmv: ["GMV"], skuOrders: ["SKU订单数"], units: ["商品成交件数"], customers: ["预计客户数"], aov: ["平均订单金额SKU订单"], impressions: ["商品曝光次数"], clicks: ["商品点击量"], ctr: ["商品点击率"], addToCarts: ["加购次数"], addToCartRate: ["加购率"], ctor: ["CTORSKU订单"], uniqueImpressions: ["去重商品曝光次数"], uniqueClicks: ["去重点击次数"], uniqueCtr: ["去重点击率"], addToCartUsers: ["已加购的用户数", "ATC用户数"], uniqueAddToCartRate: ["去重加购率"], uniqueCtor: ["去重点击成交转化率SKU订单"],
 };
 const mallAliases: Record<keyof BusinessMallMetrics, string[]> = { impressions: ["商城页商品曝光次数"], clicks: ["商城页商品点击量"], uniqueClicks: ["商城页去重商品点击量"], customers: ["预计商城页客户数"], ctr: ["商城页点击率"], ctor: ["商城页点击成交转化率SKU订单"], gmv: ["商城页GMV"], units: ["商城页商品成交件数"] };
+const productSourceGroups: Record<UkProductSourceKey, string> = { all: "全部", "merchant-live": "商家直播", "merchant-video": "商家视频", "merchant-card": "商家商品卡", affiliate: "联盟" };
 
 const groupedColumns = (rows: Rows, headerRow: number): Column[] => {
   const groupRow = rows[headerRow - 1] ?? [];
@@ -96,15 +97,44 @@ const parseProductDetails = (workbook: XLSX.WorkBook): UkProductDetailsData => {
   const idIndex = headers.findIndex((value) => key(value) === key("商品 ID"));
   const rangeIndex = headers.findIndex((value) => key(value) === key("GMV 区间"));
   const statusIndex = headers.findIndex((value) => key(value) === key("发品状态"));
-  const products: BusinessProductRecord[] = rows.slice(headerRow + 1).flatMap((row, originalIndex) => {
+  const sourceAvailability = Object.fromEntries(Object.entries(productSourceGroups).map(([source, group]) => [source, columns.some((column) => column.group === group)])) as Record<UkProductSourceKey, boolean>;
+  const products = rows.slice(headerRow + 1).flatMap((row, originalIndex) => {
     const productId = text(row[idIndex]);
     if (!productId) return [];
     const card = metricSet(emptyCard(), row, columns, "全部", aliases);
     const mall = metricSet(emptyMall(), row, columns, "全部", mallAliases);
-    return [{ originalIndex, productId, name: text(row[nameIndex]) || "未命名商品", gmvRange: rangeIndex >= 0 ? text(row[rangeIndex]) : "", publishStatus: statusIndex >= 0 ? text(row[statusIndex]) : "", orders: groupedValue(row, columns, "全部", ["订单数"]), card, mall }];
+    const base: BusinessProductRecord = { originalIndex, productId, name: text(row[nameIndex]) || "未命名商品", gmvRange: rangeIndex >= 0 ? text(row[rangeIndex]) : "", publishStatus: statusIndex >= 0 ? text(row[statusIndex]) : "", orders: groupedValue(row, columns, "全部", ["订单数"]), card, mall };
+    const sources = Object.fromEntries(Object.entries(productSourceGroups).map(([source, group]) => [source, { orders: groupedValue(row, columns, group, ["订单数"]), card: metricSet(emptyCard(), row, columns, group, aliases) }])) as Record<UkProductSourceKey, { orders: number | null; card: BusinessCardMetrics }>;
+    return [{ base, sources }];
   });
-  return { products };
+  return { products, sourceAvailability };
 };
+
+const trafficAliases: Record<string, string[]> = {
+  GMV: ["GMV"],
+  "预计客户数": ["预计客户数"],
+  "商品曝光次数": ["商品曝光次数"],
+  "商品点击量": ["商品点击量"],
+  "商品点击率": ["商品点击率"],
+  "SKU 订单数": ["SKU 订单数", "归因 SKU 订单数"],
+  "订单数": ["订单数", "归因订单数"],
+  "商品成交件数": ["商品成交件数", "归因成交件数"],
+  "加购次数": ["加购次数"],
+  "加购率": ["加购率"],
+  "CTOR（SKU 订单）": ["CTOR（SKU 订单）", "CTOR（SKU订单）"],
+  "去重商品曝光次数": ["去重商品曝光次数"],
+  "去重点击次数": ["去重点击次数"],
+  "去重点击率": ["去重点击率"],
+  "去重点击成交转化率（SKU 订单）": ["去重点击成交转化率（SKU 订单）", "去重点击成交转化率（SKU订单）"],
+};
+const trafficGroupAliases: Record<UkProductSourceKey, Record<string, string[]>> = {
+  all: trafficAliases,
+  "merchant-live": { ...trafficAliases, GMV: ["商家直播归因 GMV", "商家直播 GMV"], "SKU 订单数": ["商家直播归因 SKU 订单数", "SKU 订单数", "归因 SKU 订单数"] },
+  "merchant-video": { ...trafficAliases, GMV: ["商家视频归因 GMV", "商家视频 GMV"], "SKU 订单数": ["商家视频归因 SKU 订单数", "SKU 订单数", "归因 SKU 订单数"] },
+  "merchant-card": { ...trafficAliases, GMV: ["商家商品卡 GMV"], "SKU 订单数": ["商家商品卡 SKU 订单数", "SKU 订单数", "归因 SKU 订单数"] },
+  affiliate: { ...trafficAliases, GMV: ["达人归因 GMV", "达人直播归因 GMV", "联盟 GMV"], "SKU 订单数": ["达人归因 SKU 订单数", "SKU 订单数", "归因 SKU 订单数"] },
+};
+const trafficMetrics = (row: unknown[], columns: Column[], source: UkProductSourceKey): UkMetricMap => Object.fromEntries(Object.entries(trafficGroupAliases[source]).map(([label, fields]) => [label, groupedValue(row, columns, productSourceGroups[source], fields)]));
 
 const parseProductTraffic = (workbook: XLSX.WorkBook): UkProductTrafficData => {
   const summaryRows = rowsFor(workbook, "摘要");
@@ -114,9 +144,26 @@ const parseProductTraffic = (workbook: XLSX.WorkBook): UkProductTrafficData => {
   const comparisonRow = summaryRows.find((row) => /成长分数|增长率|环比/.test(text(row[0]))) ?? [];
   const trendRows = rowsFor(workbook, "趋势");
   const trendHeader = findHeaderRow(trendRows, ["日期", "GMV", "SKU 订单数"]);
-  const trend: UkMetricTrendPoint[] = trendHeader < 0 ? [] : trendRows.slice(trendHeader + 1).flatMap((row) => { const date = isoDate(row[0]); return date ? [{ date, metrics: mapRow(trendRows[trendHeader], row) }] : []; });
+  const summaryColumns = groupedColumns(summaryRows, summaryHeader);
+  const trendColumns = trendHeader < 0 ? [] : groupedColumns(trendRows, trendHeader);
+  const sources = Object.fromEntries(Object.entries(productSourceGroups).map(([source, group]) => {
+    const sourceKey = source as UkProductSourceKey;
+    const available = summaryColumns.some((column) => column.group === group) || trendColumns.some((column) => column.group === group);
+    const trend: UkMetricTrendPoint[] = trendHeader < 0 ? [] : trendRows.slice(trendHeader + 1).flatMap((row) => { const date = isoDate(row[0]); return date ? [{ date, metrics: trafficMetrics(row, trendColumns, sourceKey) }] : []; });
+    return [source, { summary: trafficMetrics(valueRow, summaryColumns, sourceKey), comparison: trafficMetrics(comparisonRow, summaryColumns, sourceKey), trend, available }];
+  })) as UkProductTrafficData["sources"];
   const comparisonRange = rangeFrom(summaryRows, /比较|对比/);
-  return { summary: mapRow(summaryRows[summaryHeader], valueRow), comparison: mapRow(summaryRows[summaryHeader], comparisonRow), trend, comparisonStartDate: comparisonRange?.startDate ?? null, comparisonEndDate: comparisonRange?.endDate ?? null };
+  const breakdown = Object.entries(productSourceGroups).map(([source, label]) => ({ source: label, metrics: sources[source as UkProductSourceKey].summary })).filter((row) => Object.values(row.metrics).some((value) => value !== null));
+  return { sources, breakdown, comparisonStartDate: comparisonRange?.startDate ?? null, comparisonEndDate: comparisonRange?.endDate ?? null };
+};
+
+const parseProductTrafficBreakdown = (workbook: XLSX.WorkBook): UkProductTrafficBreakdownData => {
+  const rows = rowsFor(workbook, workbook.SheetNames[0]);
+  const headerRow = findHeaderRow(rows, ["GMV", "订单数", "SKU 订单数", "商品曝光次数"]);
+  if (headerRow < 0) throw new Error("商品流量表现明细文件缺少指标表头。");
+  const headers = rows[headerRow];
+  const rowsData = rows.slice(headerRow + 1).flatMap((row) => { const source = text(row[0]); return source ? [{ source, metrics: mapRow(headers.slice(1), row.slice(1)) }] : []; });
+  return { rows: rowsData };
 };
 
 const classify = (workbook: XLSX.WorkBook): UkDataSourceKey => {
@@ -125,6 +172,7 @@ const classify = (workbook: XLSX.WorkBook): UkDataSourceKey => {
   if (values.includes("关键词") && values.includes("搜索结果访问用户数")) return "store-keywords";
   if (values.includes("商品名") && values.includes("商品 ID") && values.includes("商家商品卡")) return "product-details";
   if (workbook.SheetNames.includes("摘要") && workbook.SheetNames.includes("趋势") && values.includes("商品曝光次数")) return "product-traffic";
+  if (!values.includes("商品名") && !values.includes("商品 ID") && values.some((value) => ["商家商品卡", "商家视频", "商家直播", "联盟"].includes(value)) && values.includes("商品曝光次数") && values.includes("SKU 订单数")) return "product-traffic-breakdown";
   if (values.some((value) => /Competitor Benchmark|竞争对手参考/i.test(value)) && values.some((value) => /Impressions|曝光次数/i.test(value))) return "mall-overview";
   if (values.includes("每日数据") && values.includes("商品交易总额 (£)")) return "store-business";
   throw new Error("无法从 Excel 字段识别 UK 数据来源。");
@@ -135,6 +183,6 @@ export const parseUkAnalyticsFile = async (file: File): Promise<UkParsedImport> 
   const source = classify(workbook);
   const firstRows = rowsFor(workbook, workbook.SheetNames[0]);
   const range = source === "store-business" ? rangeFrom(firstRows, /数据分析日期/) : rangeFrom(firstRows, /数据分析日期|日期范围/);
-  const data = source === "store-business" ? parseStoreBusiness(workbook) : source === "mall-overview" ? parseMallOverview(workbook) : source === "store-keywords" ? parseStoreKeywords(workbook) : source === "product-details" ? parseProductDetails(workbook) : parseProductTraffic(workbook);
+  const data = source === "store-business" ? parseStoreBusiness(workbook) : source === "mall-overview" ? parseMallOverview(workbook) : source === "store-keywords" ? parseStoreKeywords(workbook) : source === "product-details" ? parseProductDetails(workbook) : source === "product-traffic" ? parseProductTraffic(workbook) : parseProductTrafficBreakdown(workbook);
   return { source, fileName: file.name, startDate: range?.startDate ?? null, endDate: range?.endDate ?? null, data, requiresPeriodConfirmation: !range };
 };
