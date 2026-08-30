@@ -10,6 +10,7 @@ import {
   Copy,
   Download,
   HelpCircle,
+  Image,
   Info,
   MoreVertical,
   PackageOpen,
@@ -19,6 +20,7 @@ import {
   ShoppingBag,
   Star,
   Store,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -26,7 +28,9 @@ import "./analyticsPrototype.css";
 import ProductAnalyticsList from "./ProductAnalyticsList";
 import { getMetricDelta, selectPreviousBatch } from "./businessComparison";
 import { parseBusinessFiles } from "./businessParser";
-import { usePersistedState } from "./persistence";
+import { getProductImageCacheSummary, saveProductImage, usePersistedState } from "./persistence";
+import { requestProductImages } from "./productImageBridge";
+import ProductThumbnail from "./ProductThumbnail";
 import type { BusinessBatch, BusinessProductRecord } from "./types";
 
 type MetricKey = "gmv" | "units" | "skuOrders" | "orders";
@@ -223,7 +227,7 @@ function CardDetailsPage({ batch, onConfigure, onOpenProduct }: { batch: Busines
       <header><h2>商品卡列表</h2></header>
       <div className="hf-product-search"><Search size={14} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="输入商品 ID 或商品名称" /></div>
       <div className="hf-product-toolbar"><div className="hf-product-tabs"><button className={!favorite ? "active" : ""} onClick={() => setFavorite(false)}>全部</button><button className={favorite ? "active" : ""} onClick={() => setFavorite(true)}><Star size={12} /> 已收藏</button></div><span>类目</span><div className="hf-category-select"><strong>全部类目</strong><X size={12} /><ChevronDown size={13} /></div><div className="hf-product-actions"><label className="hf-switch-label"><button className={diagnosis ? "on" : ""} onClick={() => setDiagnosis(!diagnosis)}><i /></button>诊断模式 <HelpCircle size={12} /></label><button onClick={onConfigure}><Settings2 size={13} /> 配置指标</button><button><Download size={13} /> 导出数据</button><button className="icon-only"><MoreVertical size={14} /></button></div></div>
-      <div className="hf-product-table-wrap"><table className="hf-product-table"><thead><tr><th>商品卡名称 <HelpCircle size={11} /></th><th className={sort.field === "uniqueImpressions" ? "sorted" : ""}><button onClick={() => setSortField("uniqueImpressions")}>曝光用户数 {sortMark("uniqueImpressions")}</button></th><th className={sort.field === "uniqueClicks" ? "sorted" : ""}><button onClick={() => setSortField("uniqueClicks")}>点击人数 {sortMark("uniqueClicks")}</button></th><th className={sort.field === "uniqueCtr" ? "sorted" : ""}><button onClick={() => setSortField("uniqueCtr")}>曝光到点击转化率 {sortMark("uniqueCtr")}</button></th><th className={sort.field === "customers" ? "sorted" : ""}><button onClick={() => setSortField("customers")}>日客户数 {sortMark("customers")}</button></th><th>SKU</th><th>操作</th></tr></thead><tbody>{visible.map((product) => <tr key={product.productId}><td><div className="hf-product-identity"><i className="hf-thumb lavender">{product.name.slice(0, 1)}</i><span><strong>{product.name}</strong><small>ID：{product.productId} <button aria-label="复制 Product ID"><Copy size={11} /></button></small><em className="hf-real-status">{product.publishStatus || "未填写"}</em></span></div></td><td className={sort.field === "uniqueImpressions" ? "sorted" : ""}>{detailCount(product.card.uniqueImpressions)}</td><td className={sort.field === "uniqueClicks" ? "sorted" : ""}>{detailCount(product.card.uniqueClicks)}</td><td className={sort.field === "uniqueCtr" ? "sorted" : ""}>{detailRate(product.card.uniqueCtr)}</td><td className={sort.field === "customers" ? "sorted" : ""}>{detailCount(product.card.customers)}</td><td>--</td><td><button className="hf-detail-action" onClick={() => onOpenProduct(product.name)}>详情</button></td></tr>)}</tbody></table>{!visible.length && <div className="hf-real-empty">{batch ? "没有符合条件的真实商品数据" : "请先在店铺数据分析首页导入三份官方 Excel"}</div>}</div>
+      <div className="hf-product-table-wrap"><table className="hf-product-table"><thead><tr><th>商品卡名称 <HelpCircle size={11} /></th><th className={sort.field === "uniqueImpressions" ? "sorted" : ""}><button onClick={() => setSortField("uniqueImpressions")}>曝光用户数 {sortMark("uniqueImpressions")}</button></th><th className={sort.field === "uniqueClicks" ? "sorted" : ""}><button onClick={() => setSortField("uniqueClicks")}>点击人数 {sortMark("uniqueClicks")}</button></th><th className={sort.field === "uniqueCtr" ? "sorted" : ""}><button onClick={() => setSortField("uniqueCtr")}>曝光到点击转化率 {sortMark("uniqueCtr")}</button></th><th className={sort.field === "customers" ? "sorted" : ""}><button onClick={() => setSortField("customers")}>日客户数 {sortMark("customers")}</button></th><th>SKU</th><th>操作</th></tr></thead><tbody>{visible.map((product) => <tr key={product.productId}><td><div className="hf-product-identity"><ProductThumbnail productId={product.productId} fallbackText={product.name} /><span><strong>{product.name}</strong><small>ID：{product.productId} <button aria-label="复制 Product ID"><Copy size={11} /></button></small><em className="hf-real-status">{product.publishStatus || "未填写"}</em></span></div></td><td className={sort.field === "uniqueImpressions" ? "sorted" : ""}>{detailCount(product.card.uniqueImpressions)}</td><td className={sort.field === "uniqueClicks" ? "sorted" : ""}>{detailCount(product.card.uniqueClicks)}</td><td className={sort.field === "uniqueCtr" ? "sorted" : ""}>{detailRate(product.card.uniqueCtr)}</td><td className={sort.field === "customers" ? "sorted" : ""}>{detailCount(product.card.customers)}</td><td>--</td><td><button className="hf-detail-action" onClick={() => onOpenProduct(product.name)}>详情</button></td></tr>)}</tbody></table>{!visible.length && <div className="hf-real-empty">{batch ? "没有符合条件的真实商品数据" : "请先在店铺数据分析首页导入三份官方 Excel"}</div>}</div>
       <footer className="hf-pagination"><button disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={13} /></button>{Array.from({ length: Math.min(pageCount, 3) }, (_, index) => index + 1).map((item) => <button key={item} className={page === item ? "active" : ""} onClick={() => setPage(item)}>{item}</button>)}<button disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}><ChevronRight size={13} /></button><select aria-label="每页条数" defaultValue="10"><option value="10">10/Page</option><option value="20">20/Page</option></select></footer>
     </section>
   );
@@ -374,6 +378,40 @@ function AnalyticsDataNotice({ batch, visible, onClose }: { batch: BusinessBatch
   return <div className="hf-delay-notice"><AlertTriangleIcon /><span>数据质量提示：{batch.qualityIssues.map((issue) => issue.message).join("；")}</span><button aria-label="关闭提示" onClick={onClose}><X size={14} /></button></div>;
 }
 
+type ImageSyncScope = "20" | "30" | "sold";
+
+function AnalyticsDataManager({ batches, activeBatch, onSelectBatch, onDeleteBatch, onImport, onClose }: {
+  batches: BusinessBatch[];
+  activeBatch: BusinessBatch | null;
+  onSelectBatch: (id: string) => void;
+  onDeleteBatch: (id: string) => void;
+  onImport: () => void;
+  onClose: () => void;
+}) {
+  const [scope, setScope] = useState<ImageSyncScope>("30");
+  const [cacheSummary, setCacheSummary] = useState({ cached: 0, latestFetchedAt: null as string | null });
+  const [syncMessage, setSyncMessage] = useState("");
+  const productIds = useMemo(() => [...new Set((activeBatch?.products ?? []).map((product) => product.productId))], [activeBatch]);
+  const reloadCacheSummary = () => void getProductImageCacheSummary(productIds).then(setCacheSummary);
+  useEffect(reloadCacheSummary, [productIds]);
+  const syncImages = async () => {
+    if (!activeBatch) { setSyncMessage("请先导入一个完整周期。"); return; }
+    const sorted = activeBatch.products.filter((product) => (product.card.gmv ?? 0) > 0).sort((left, right) => (right.card.gmv ?? 0) - (left.card.gmv ?? 0));
+    const products = scope === "sold" ? sorted : sorted.slice(0, Number(scope));
+    if (!products.length) { setSyncMessage("当前周期没有可同步的成交商品。"); return; }
+    const response = await requestProductImages(products.map((product) => ({ productId: product.productId, name: product.name })));
+    if (response.status === "unavailable") { setSyncMessage("未检测到图片采集插件，当前仅建立图片缓存任务。"); return; }
+    await Promise.all(response.results.map((result) => saveProductImage({ ...result, fetchedAt: new Date().toISOString() })));
+    reloadCacheSummary();
+    setSyncMessage(response.results.length ? `已保存 ${response.results.length} 张主图。` : "图片采集插件未返回可保存的主图。");
+  };
+  return <aside className="hf-data-manager" aria-label="数据管理">
+    <header><div><strong>数据管理</strong><small>本地保存于当前浏览器</small></div><button onClick={onClose} aria-label="关闭数据管理"><X size={15} /></button></header>
+    <section><div className="hf-manager-section-heading"><div><h3>周期数据</h3><small>已保存 {batches.length} 个周期</small></div><button onClick={onImport}>导入一个周期</button></div><p className="hf-manager-import-note">一次选择同一周期的商品数据、商品卡专项、全部流量三份 Excel。</p><div className="hf-manager-batches">{batches.length ? batches.map((batch) => <article key={batch.id} className={batch.id === activeBatch?.id ? "active" : ""}><div><strong>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</strong>{batch.id === activeBatch?.id && <em>当前</em>}<small>文件：✓ 商品数据　✓ 商品卡专项　✓ 全部流量</small><small>导入时间：{new Date(batch.importedAt).toLocaleString("zh-CN", { hour12: false })}</small></div><footer><button disabled={batch.id === activeBatch?.id} onClick={() => onSelectBatch(batch.id)}>切换</button><button className="danger" onClick={() => onDeleteBatch(batch.id)} aria-label={`删除 ${batch.startDate} 至 ${batch.endDate}`}><Trash2 size={13} /> 删除</button></footer></article>) : <div className="hf-manager-empty">尚未导入完整周期</div>}</div></section>
+    <section><div className="hf-manager-section-heading"><div><h3>商品资料缓存</h3><small>按 Product ID 跨周期复用</small></div><Image size={15} /></div><div className="hf-image-cache-status"><strong>已缓存主图：{cacheSummary.cached} / {productIds.length}</strong><span>待同步：{Math.max(0, productIds.length - cacheSummary.cached)}　失败：0</span><span>建议同步：GMV 前 30 商品</span><span>最近同步：{cacheSummary.latestFetchedAt ? new Date(cacheSummary.latestFetchedAt).toLocaleString("zh-CN", { hour12: false }) : "从未同步"}</span></div><div className="hf-image-cache-actions"><select aria-label="同步范围" value={scope} onChange={(event) => setScope(event.target.value as ImageSyncScope)}><option value="20">GMV 前 20</option><option value="30">GMV 前 30</option><option value="sold">所有有成交商品</option></select><button onClick={() => void syncImages()}>同步重点商品主图</button></div>{syncMessage && <p className="hf-image-sync-message">{syncMessage}</p>}</section>
+  </aside>;
+}
+
 function AnalyticsShell() {
   const [notice, setNotice] = useState(true);
   const [state, setState, restored] = usePersistedState<HighFidelityAnalyticsState>("high-fidelity-analytics", initialHighFidelityState);
@@ -386,6 +424,7 @@ function AnalyticsShell() {
   const [metricModal, setMetricModal] = useState(false);
   const [detailProduct, setDetailProduct] = useState<string | null>(null);
   const [periodOpen, setPeriodOpen] = useState(false);
+  const [dataManagerOpen, setDataManagerOpen] = useState(false);
   const batches = useMemo(() => sortBatches(state.batches), [state.batches]);
   const overviewBatch = batches.find((batch) => batch.id === state.activeBatchId) ?? batches[0] ?? null;
   const previousBatch = useMemo(() => selectPreviousBatch(batches, overviewBatch), [batches, overviewBatch]);
@@ -408,11 +447,20 @@ function AnalyticsShell() {
     catch (caught) { setOverviewError(caught instanceof Error ? caught.message : "文件解析失败，请选择同一周期的三份官方 Excel。"); }
     finally { if (overviewInput.current) overviewInput.current.value = ""; }
   };
+  const selectBatch = (id: string) => { setState((current) => ({ ...current, activeBatchId: id })); setDetailProduct(null); setPeriodOpen(false); };
+  const deleteBatch = (id: string) => {
+    const batch = batches.find((item) => item.id === id);
+    if (!batch || !window.confirm(`确定删除 ${formatIsoDate(batch.startDate)} – ${formatIsoDate(batch.endDate)} 的周期数据吗？商品图片缓存将保留。`)) return;
+    setState((current) => {
+      const remaining = sortBatches(current.batches.filter((item) => item.id !== id));
+      return { batches: remaining, activeBatchId: current.activeBatchId === id ? remaining[0]?.id ?? null : current.activeBatchId };
+    });
+  };
   return (
     <main className="hf-analytics-shell">
       <header className="hf-page-header">
         <div><h1>数据分析</h1><nav aria-label="分析导航"><button className={section === "store" ? "active" : ""} onClick={() => { setSection("store"); setDetailProduct(null); }}>店铺数据分析</button><button>成长和数据分析</button><button>内容分析</button><button className={section === "card" ? "active" : ""} onClick={() => { setSection("card"); setDetailProduct(null); }}>商品卡</button><button className={section === "productData" ? "active" : ""} onClick={() => { setSection("productData"); setDetailProduct(null); }}>商品数据分析</button><button>营销数据分析</button><button>售后数据分析</button></nav></div>
-        <div className="hf-date-control"><span>(GMT+08:00)</span><div className="hf-period-picker"><button onClick={() => setPeriodOpen((open) => !open)}>最近 7 天：　{overviewBatch ? `${formatIsoDate(overviewBatch.startDate)}　–　${formatIsoDate(overviewBatch.endDate)}` : "未导入周期"} <CalendarDays size={14} /></button>{periodOpen && <div className="hf-period-menu">{batches.length ? <>{batches.map((batch) => <button key={batch.id} className={batch.id === overviewBatch?.id ? "active" : ""} onClick={() => { setState((current) => ({ ...current, activeBatchId: batch.id })); setDetailProduct(null); setPeriodOpen(false); }}>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</button>)}<small>当前 {overviewBatch ? `${formatIsoDate(overviewBatch.startDate)} – ${formatIsoDate(overviewBatch.endDate)}` : "--"} · 已保存 {batches.length} 个周期</small></> : <span>尚未导入完整周期</span>}</div>}</div><small className="hf-history-count">已保存 {batches.length} 个周期</small><button className="compare-date">{previousBatch ? `对比 ${formatIsoDate(previousBatch.startDate)} – ${formatIsoDate(previousBatch.endDate)}` : "暂无可比较周期"}</button>{section === "store" && <button className="hf-overview-import" onClick={() => overviewInput.current?.click()}>导入本期数据</button>}</div>
+        <div className="hf-date-control"><span>(GMT+08:00)</span><div className="hf-period-picker"><button onClick={() => setPeriodOpen((open) => !open)}>最近 7 天：　{overviewBatch ? `${formatIsoDate(overviewBatch.startDate)}　–　${formatIsoDate(overviewBatch.endDate)}` : "未导入周期"} <CalendarDays size={14} /></button>{periodOpen && <div className="hf-period-menu">{batches.length ? <>{batches.map((batch) => <button key={batch.id} className={batch.id === overviewBatch?.id ? "active" : ""} onClick={() => selectBatch(batch.id)}>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</button>)}<small>当前 {overviewBatch ? `${formatIsoDate(overviewBatch.startDate)} – ${formatIsoDate(overviewBatch.endDate)}` : "--"} · 已保存 {batches.length} 个周期</small></> : <span>尚未导入完整周期</span>}</div>}</div><small className="hf-history-count">已保存 {batches.length} 个周期</small><button className="compare-date">{previousBatch ? `对比 ${formatIsoDate(previousBatch.startDate)} – ${formatIsoDate(previousBatch.endDate)}` : "暂无可比较周期"}</button><button className="hf-data-manager-trigger" onClick={() => setDataManagerOpen((open) => !open)}>数据管理</button>{section === "store" && <button className="hf-overview-import" onClick={() => overviewInput.current?.click()}>导入一个周期</button>}{dataManagerOpen && <AnalyticsDataManager batches={batches} activeBatch={overviewBatch} onSelectBatch={selectBatch} onDeleteBatch={deleteBatch} onImport={() => { setDataManagerOpen(false); overviewInput.current?.click(); }} onClose={() => setDataManagerOpen(false)} />}</div>
       </header>
       {section === "productData" ? <><div className="hf-main-content"><AnalyticsDataNotice batch={overviewBatch} visible={notice} onClose={() => setNotice(false)} /></div><ProductAnalyticsList batch={overviewBatch} previousBatch={previousBatch} batches={batches} /></> : <div className="hf-analytics-layout">
         {section === "store" ? <AnalyticsSidebar /> : <ProductCardSidebar page={cardPage} onPage={(page) => { setCardPage(page); setDetailProduct(null); }} />}
