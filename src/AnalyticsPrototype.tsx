@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   BarChart3,
@@ -19,23 +19,24 @@ import {
   ShoppingBag,
   Star,
   Store,
-  TrendingUp,
   Users,
   X,
 } from "lucide-react";
 import "./analyticsPrototype.css";
 import ProductAnalyticsList from "./ProductAnalyticsList";
+import { getMetricDelta, selectPreviousBatch } from "./businessComparison";
 import { parseBusinessFiles } from "./businessParser";
+import { usePersistedState } from "./persistence";
 import type { BusinessBatch, BusinessProductRecord } from "./types";
 
 type MetricKey = "gmv" | "units" | "skuOrders" | "orders";
 type CardPage = "performance" | "details";
 
-const metrics: Array<{ key: MetricKey; label: string; value: string; color: string }> = [
-  { key: "gmv", label: "GMV", value: "RM5.99", color: "#6559e8" },
-  { key: "units", label: "商品成交件数", value: "1", color: "#2e9f86" },
-  { key: "skuOrders", label: "SKU 订单数", value: "1", color: "#4d83dc" },
-  { key: "orders", label: "订单数", value: "1", color: "#df8f45" },
+const metrics: Array<{ key: MetricKey; label: string; color: string }> = [
+  { key: "gmv", label: "GMV", color: "#6559e8" },
+  { key: "units", label: "商品成交件数", color: "#2e9f86" },
+  { key: "skuOrders", label: "SKU 订单数", color: "#4d83dc" },
+  { key: "orders", label: "订单数", color: "#df8f45" },
 ];
 
 const overviewLabels: Record<MetricKey, string> = { gmv: "GMV", units: "商品成交件数", skuOrders: "SKU 订单数", orders: "订单数" };
@@ -43,36 +44,17 @@ const overviewColors: Record<MetricKey, string> = { gmv: "#6559e8", units: "#2e9
 const formatOverviewCurrency = (value: number | null, symbol: string): string => value === null ? "—" : `${symbol}${value.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatOverviewValue = (key: MetricKey, value: number | null, symbol: string): string => key === "gmv" ? formatOverviewCurrency(value, symbol) : value === null ? "—" : value.toLocaleString("en-GB", { maximumFractionDigits: 0 });
 const formatIsoDate = (value: string): string => value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$1/$2/$3");
-const overviewMetricItems = (batch: BusinessBatch | null) => metrics.map((metric) => ({ ...metric, label: overviewLabels[metric.key], value: batch ? formatOverviewValue(metric.key, batch.overviewSummary[metric.key], batch.currencySymbol) : metric.value, delta: batch?.overviewComparison?.growth[metric.key] ?? null }));
-const shareOf = (value: number | null, total: number | null): string => value === null || total === null || total === 0 ? "—" : `${Math.round((value / total) * 1000) / 10}%`;
-
-const trendData: Record<MetricKey, number[]> = {
-  gmv: [0, 5.9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  units: [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-  skuOrders: [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-  orders: [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+const sortBatches = (batches: BusinessBatch[]) => [...batches].sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate));
+const deltaText = (current: number | null, previous: number | null, rate = false): { text: string; tone: "positive" | "negative" | "neutral" } => {
+  const delta = getMetricDelta(current, previous, rate);
+  if (delta.kind === "new") return { text: "新增", tone: "positive" };
+  if (delta.kind === "percent") return { text: `${delta.value >= 0 ? "▲" : "▼"} ${Math.abs(delta.value).toFixed(2)}%`, tone: delta.value > 0 ? "positive" : delta.value < 0 ? "negative" : "neutral" };
+  if (delta.kind === "points") return { text: `${delta.value >= 0 ? "▲" : "▼"} ${Math.abs(delta.value).toFixed(2)}pp`, tone: delta.value > 0 ? "positive" : delta.value < 0 ? "negative" : "neutral" };
+  return { text: "--", tone: "neutral" };
 };
-
-const shops = [
-  ["The Daily Edit MY", "▲ 78", "daily"],
-  ["Switch Official Store", "0", "switch"],
-  ["Machines Official Store", "0", "machines"],
-  ["Xiaomi Malaysia", "0", "xiaomi"],
-  ["GOOJODOQ.Store", "0", "goo"],
-  ["UgreenOfficialShop", "0", "ugreen"],
-];
-
-const contentBreakdown = [
-  { name: "直播", value: "RM0.00", share: "0%", color: "#18a899", children: ["联盟直播", "商家直播"], childValues: ["RM0.00", "RM0.00"] },
-  { name: "视频", value: "RM0.00", share: "0%", color: "#f4bd45", children: ["联盟视频", "商家视频"], childValues: ["RM0.00", "RM0.00"] },
-  { name: "商品卡", value: "RM5.99", share: "100%", color: "#6559e8", children: [], childValues: [] },
-];
-
-const sourceBreakdown = [
-  { name: "商品卡订单", value: "RM5.99", share: "100%", color: "#6559e8", children: ["商城", "店铺页面"], childValues: ["RM0.00", "RM0.00"] },
-  { name: "内容订单", value: "RM0.00", share: "0%", color: "#18a899", children: ["直播", "视频"], childValues: ["RM0.00", "RM0.00"] },
-  { name: "其他", value: "RM0.00", share: "0%", color: "#b9c0cb", children: [], childValues: [] },
-];
+const importedGrowthText = (growth: number | null): { text: string; tone: "positive" | "negative" | "neutral" } => growth === null ? { text: "--", tone: "neutral" } : { text: `${growth >= 0 ? "▲" : "▼"} ${Math.abs(growth).toFixed(2)}%`, tone: growth > 0 ? "positive" : growth < 0 ? "negative" : "neutral" };
+const overviewMetricItems = (batch: BusinessBatch | null, previous: BusinessBatch | null) => metrics.map((metric) => ({ ...metric, label: overviewLabels[metric.key], value: batch ? formatOverviewValue(metric.key, batch.overviewSummary[metric.key], batch.currencySymbol) : "--", delta: batch && previous ? deltaText(batch.overviewSummary[metric.key], previous.overviewSummary[metric.key]) : batch ? importedGrowthText(batch.overviewComparison?.growth[metric.key] ?? null) : { text: "--", tone: "neutral" as const } }));
+const shareOf = (value: number | null, total: number | null): string => value === null || total === null || total === 0 ? "—" : `${Math.round((value / total) * 1000) / 10}%`;
 
 const metricGroups = [
   {
@@ -153,22 +135,25 @@ const formatCardCount = (value: number | null): string => value === null ? "--" 
 const formatCardMoney = (value: number | null, symbol: string): string => value === null ? "--" : `${symbol}${value.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatCardRate = (value: number | null): string => value === null ? "--" : `${value.toFixed(2)}%`;
 
-function CardTrendPanel({ batch }: { batch: BusinessBatch | null }) {
+function CardTrendPanel({ batch, previous, compare }: { batch: BusinessBatch | null; previous: BusinessBatch | null; compare: boolean }) {
   const [selected, setSelected] = useState<CardTrendKey[]>(["impressions", "skuOrders"]);
   const toggle = (key: CardTrendKey) => setSelected((current) => current.includes(key) ? current.length === 1 ? current : current.filter((item) => item !== key) : current.length >= 2 ? current : [...current, key]);
   const points = batch?.shopCardTrend ?? [];
+  const previousPoints = compare ? previous?.shopCardTrend ?? [] : [];
   const width = 720;
   const height = 150;
   const pad = { left: 42, right: 18, top: 12, bottom: 25 };
-  const x = (index: number) => pad.left + index * ((width - pad.left - pad.right) / Math.max(points.length - 1, 1));
-  const valuesFor = (key: CardTrendKey) => points.map((point) => point.metrics[key]);
-  const maxFor = (key: CardTrendKey) => Math.max(...valuesFor(key).filter((value): value is number => value !== null), 1);
+  const pointCount = Math.max(points.length, previousPoints.length, 1);
+  const x = (index: number) => pad.left + index * ((width - pad.left - pad.right) / Math.max(pointCount - 1, 1));
+  const valuesFor = (series: typeof points, key: CardTrendKey) => series.map((point) => point.metrics[key]);
+  const maxFor = (key: CardTrendKey) => Math.max(...[...valuesFor(points, key), ...valuesFor(previousPoints, key)].filter((value): value is number => value !== null), 1);
   const y = (key: CardTrendKey, value: number) => pad.top + (1 - value / maxFor(key)) * (height - pad.top - pad.bottom);
   const colors: Record<CardTrendKey, string> = { impressions: "#18a899", skuOrders: "#6559e8" };
-  const segmentsFor = (key: CardTrendKey) => {
+  const previousColors: Record<CardTrendKey, string> = { impressions: "#a9dfd7", skuOrders: "#bbb5f0" };
+  const segmentsFor = (series: typeof points, key: CardTrendKey) => {
     const segments: string[] = [];
     let current: string[] = [];
-    valuesFor(key).forEach((value, index) => {
+    valuesFor(series, key).forEach((value, index) => {
       if (value === null) {
         if (current.length) segments.push(current.join(" "));
         current = [];
@@ -180,25 +165,26 @@ function CardTrendPanel({ batch }: { batch: BusinessBatch | null }) {
   return <div className="hf-card-trend">
     <header><div><h3>商品卡每日趋势</h3><span>{batch ? `${batch.startDate} – ${batch.endDate}` : "未导入周期"}</span></div><div className="hf-card-trend-options">{(Object.keys(cardTrendLabels) as CardTrendKey[]).map((key) => <button key={key} className={selected.includes(key) ? "active" : ""} onClick={() => toggle(key)}>{cardTrendLabels[key]}</button>)}</div></header>
     {!batch || !points.length ? <div className="hf-card-trend-empty">当前未导入商品卡每日趋势数据</div> : <>
-      <div className="hf-chart-legend">{selected.map((key) => <span key={key}><i style={{ background: colors[key] }} />{cardTrendLabels[key]}</span>)}</div>
+      <div className="hf-chart-legend">{selected.map((key) => <span key={key}><i style={{ background: colors[key] }} />本期 {cardTrendLabels[key]}</span>)}{previous && compare && selected.map((key) => <span className="previous" key={`previous-${key}`}><i style={{ background: previousColors[key] }} />对比周期 {cardTrendLabels[key]}</span>)}</div>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="商品卡每日趋势图">
         {[0, 1, 2, 3].map((index) => { const lineY = pad.top + index * ((height - pad.top - pad.bottom) / 3); return <line key={index} x1={pad.left} x2={width - pad.right} y1={lineY} y2={lineY} />; })}
-        {selected.flatMap((key) => segmentsFor(key).map((segment, index) => <polyline key={`${key}-${index}`} points={segment} stroke={colors[key]} />))}
+        {previous && compare && selected.flatMap((key) => segmentsFor(previousPoints, key).map((segment, index) => <polyline className="previous" key={`previous-${key}-${index}`} points={segment} stroke={previousColors[key]} />))}
+        {selected.flatMap((key) => segmentsFor(points, key).map((segment, index) => <polyline key={`${key}-${index}`} points={segment} stroke={colors[key]} />))}
         {points.map((point, index) => <text key={`${point.date}-${index}`} x={x(index)} y={height - 6} textAnchor="middle">{point.date.slice(5).replace("-", "/")}</text>)}
       </svg>
     </>}
   </div>;
 }
 
-function CardPerformancePage({ batch, onConfigure }: { batch: BusinessBatch | null; onConfigure: () => void }) {
+function CardPerformancePage({ batch, previous, onConfigure }: { batch: BusinessBatch | null; previous: BusinessBatch | null; onConfigure: () => void }) {
   const [compare, setCompare] = useState(false);
   const summary = batch?.shopCardSummary;
   return (
     <div className="hf-card-page">
       <section className="hf-panel hf-card-kpi-panel">
-        <header className="hf-card-section-header"><div><h2>关键指标</h2><button className="hf-help-link">什么是商品卡？ <ChevronRight size={13} /></button></div><div className="hf-card-tools"><label className="hf-check-label"><input type="checkbox" checked={compare} disabled title="请先导入可比较的历史周期" onChange={(event) => setCompare(event.target.checked)} /> 对比趋势</label><button onClick={onConfigure}><Settings2 size={13} /> 配置指标</button><button><Download size={13} /> 导出数据</button><button className="icon-only" aria-label="其他操作"><MoreVertical size={14} /></button></div></header>
-        <div className="hf-card-kpis">{cardPerformanceMetrics.map((item) => { const value = summary?.[item.key] ?? null; return <article key={item.key}><span>{item.label} <HelpCircle size={12} /></span><strong>{item.format === "money" ? formatCardMoney(value, batch?.currencySymbol ?? "") : item.format === "rate" ? formatCardRate(value) : formatCardCount(value)}</strong><small>较上一周期　<em className="neutral">--</em></small><p>当前导出文件暂无同行基准</p></article>; })}</div>
-        <CardTrendPanel batch={batch} />
+        <header className="hf-card-section-header"><div><h2>关键指标</h2><button className="hf-help-link">什么是商品卡？ <ChevronRight size={13} /></button></div><div className="hf-card-tools"><label className="hf-check-label"><input type="checkbox" checked={compare} disabled={!previous} title={previous ? "显示对比周期趋势" : "请先导入可比较的历史周期"} onChange={(event) => setCompare(event.target.checked)} /> 对比趋势</label><button onClick={onConfigure}><Settings2 size={13} /> 配置指标</button><button><Download size={13} /> 导出数据</button><button className="icon-only" aria-label="其他操作"><MoreVertical size={14} /></button></div></header>
+        <div className="hf-card-kpis">{cardPerformanceMetrics.map((item) => { const value = summary?.[item.key] ?? null; const change = batch && previous ? deltaText(value, previous.shopCardSummary[item.key], item.key === "ctor") : { text: "--", tone: "neutral" as const }; return <article key={item.key}><span>{item.label} <HelpCircle size={12} /></span><strong>{item.format === "money" ? formatCardMoney(value, batch?.currencySymbol ?? "") : item.format === "rate" ? formatCardRate(value) : formatCardCount(value)}</strong><small>较上一周期　<em className={change.tone}>{change.text}</em></small><p>当前导出文件暂无同行基准</p></article>; })}</div>
+        <CardTrendPanel batch={batch} previous={previous} compare={compare} />
       </section>
       <section className="hf-panel hf-traffic-panel">
         <header className="hf-card-section-header"><h2>流量来源</h2><PanelTools onConfigure={onConfigure} exportLabel={false} /></header>
@@ -251,8 +237,8 @@ function MetricModal({ draft, onToggle, onRemove, onCancel, onConfirm }: { draft
   return <div className="hf-modal-backdrop" role="presentation"><section className="hf-metric-modal" role="dialog" aria-modal="true" aria-labelledby="hf-metric-title"><header><h2 id="hf-metric-title">自定义指标</h2></header><div className="hf-modal-body"><div className="hf-metric-picker"><div className="hf-modal-column-title"><strong>选择指标</strong><button>↻ 恢复默认</button></div>{metricGroups.map((group) => <section key={group.title}><h3>{group.title}</h3><div>{group.items.map((name) => <label key={name}><input type="checkbox" checked={draft.includes(name)} onChange={() => onToggle(name)} /><span>{name}</span></label>)}</div></section>)}<div className="hf-placeholder-groups">{["商家直播表现", "商家视频表现", "商家商品卡表现", "联盟表现"].map((name) => <section key={name}><h3>{name}</h3><p>当前阶段仅保留分类位置</p></section>)}</div></div><aside className="hf-selected-metrics"><div className="hf-modal-column-title"><strong>已选择 {draft.length} 个指标</strong></div><div>{draft.map((name) => <span key={name}><strong>{name}</strong><button aria-label={`移除${name}`} onClick={() => onRemove(name)}><X size={12} /></button></span>)}</div></aside></div><footer><button onClick={onCancel}>取消</button><button className="primary" onClick={onConfirm}>确定</button></footer></section></div>;
 }
 
-function MetricSelector({ selected, onToggle, batch }: { selected: MetricKey[]; onToggle: (key: MetricKey) => void; batch: BusinessBatch | null }) {
-  const items = overviewMetricItems(batch);
+function MetricSelector({ selected, onToggle, batch, previous }: { selected: MetricKey[]; onToggle: (key: MetricKey) => void; batch: BusinessBatch | null; previous: BusinessBatch | null }) {
+  const items = overviewMetricItems(batch, previous);
   return (
     <div className="hf-metric-row">
       {items.map((metric) => {
@@ -262,7 +248,7 @@ function MetricSelector({ selected, onToggle, batch }: { selected: MetricKey[]; 
             {active && <i style={{ background: metric.color }} />}
             <span>{metric.label}</span>
             <strong>{metric.value}</strong>
-            <em className={metric.delta === null ? "neutral" : metric.delta > 0 ? "positive" : metric.delta < 0 ? "negative" : "neutral"}>{metric.delta === null ? "—" : `${metric.delta > 0 ? "▲" : metric.delta < 0 ? "▼" : "—"} ${Math.abs(metric.delta).toFixed(2)}%`}</em>
+            <em className={metric.delta.tone}>{metric.delta.text}</em>
             <b>{active ? "✓" : ""}</b>
           </button>
         );
@@ -271,52 +257,66 @@ function MetricSelector({ selected, onToggle, batch }: { selected: MetricKey[]; 
   );
 }
 
-function TrendChart({ selected, batch }: { selected: MetricKey[]; batch: BusinessBatch | null }) {
+function TrendChart({ selected, batch, previous }: { selected: MetricKey[]; batch: BusinessBatch | null; previous: BusinessBatch | null }) {
   const width = 720;
   const height = 205;
   const pad = { left: 48, right: 30, top: 16, bottom: 28 };
   const points = batch?.overviewTrend ?? [];
-  const pointCount = batch ? points.length : trendData.gmv.length;
+  const previousPoints = previous?.overviewTrend ?? [];
+  const pointCount = Math.max(points.length, previousPoints.length, 1);
   const x = (index: number) => pad.left + index * ((width - pad.left - pad.right) / Math.max(pointCount - 1, 1));
-  const valuesFor = (key: MetricKey): Array<number | null> => batch ? points.map((point) => point.metrics[key]) : trendData[key];
-  const maxFor = (key: MetricKey) => Math.max(...valuesFor(key).filter((value): value is number => value !== null), 1);
+  const valuesFor = (series: typeof points, key: MetricKey): Array<number | null> => series.map((point) => point.metrics[key]);
+  const maxFor = (key: MetricKey) => Math.max(...[...valuesFor(points, key), ...valuesFor(previousPoints, key)].filter((value): value is number => value !== null), 1);
   const y = (key: MetricKey, value: number) => pad.top + (1 - value / maxFor(key)) * (height - pad.top - pad.bottom);
   const colors: Record<MetricKey, string> = { gmv: "#18a899", units: "#437fe2", skuOrders: "#6559e8", orders: "#df8f45" };
-  const labels = batch ? points.map((point) => point.date.slice(5).replace("-", "/")) : ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
-  const items = overviewMetricItems(batch);
+  const previousColors: Record<MetricKey, string> = { gmv: "#a9dfd7", units: "#a9c8f3", skuOrders: "#bbb5f0", orders: "#efc9a8" };
+  const labels = points.map((point) => point.date.slice(5).replace("-", "/"));
+  const items = overviewMetricItems(batch, previous);
   const axisKey = selected[0] ?? "gmv";
   const axisMax = maxFor(axisKey);
-  const axisLabel = (ratio: number) => axisKey === "gmv" ? formatOverviewCurrency(axisMax * ratio, batch?.currencySymbol ?? "RM") : Math.round(axisMax * ratio).toLocaleString("en-GB");
+  const axisLabel = (ratio: number) => axisKey === "gmv" ? formatOverviewCurrency(axisMax * ratio, batch?.currencySymbol ?? "") : Math.round(axisMax * ratio).toLocaleString("en-GB");
+  const segmentsFor = (series: typeof points, key: MetricKey) => {
+    const segments: string[] = [];
+    let current: string[] = [];
+    valuesFor(series, key).forEach((value, index) => {
+      if (value === null) { if (current.length) segments.push(current.join(" ")); current = []; }
+      else current.push(`${x(index)},${y(key, value)}`);
+    });
+    if (current.length) segments.push(current.join(" "));
+    return segments;
+  };
+  if (!batch || !points.length) return <div className="hf-trend hf-trend-empty">当前导出文件未提供店铺每日趋势数据</div>;
   return (
     <div className="hf-trend">
       <div className="hf-chart-legend">
-        {selected.map((key) => <span key={key}><i style={{ background: colors[key] }} /> {batch ? "本期" : "今日"} {items.find((item) => item.key === key)?.label}</span>)}
-        {selected.map((key) => <span className="previous" key={`previous-${key}`}><i /> {batch ? "对比周期" : "昨日"} {items.find((item) => item.key === key)?.label}</span>)}
+        {selected.map((key) => <span key={key}><i style={{ background: colors[key] }} />本期 {items.find((item) => item.key === key)?.label}</span>)}
+        {previous && selected.map((key) => <span className="previous" key={`previous-${key}`}><i style={{ background: previousColors[key] }} />对比周期 {items.find((item) => item.key === key)?.label}</span>)}
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="关键指标趋势图">
         {[0, 1, 2, 3].map((index) => {
           const lineY = pad.top + index * ((height - pad.top - pad.bottom) / 3);
           return <g key={index}><line x1={pad.left} x2={width - pad.right} y1={lineY} y2={lineY} /><text x={pad.left - 8} y={lineY + 4} textAnchor="end">{axisLabel(1 - index / 3)}</text></g>;
         })}
-        {selected.map((key) => <polyline key={key} points={valuesFor(key).flatMap((item, index) => item === null ? [] : [`${x(index)},${y(key, item)}`]).join(" ")} fill="none" stroke={colors[key]} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />)}
+        {previous && selected.flatMap((key) => segmentsFor(previousPoints, key).map((segment, index) => <polyline className="previous" key={`previous-${key}-${index}`} points={segment} fill="none" stroke={previousColors[key]} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />))}
+        {selected.flatMap((key) => segmentsFor(points, key).map((segment, index) => <polyline key={`${key}-${index}`} points={segment} fill="none" stroke={colors[key]} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />))}
         {labels.map((label, index) => <text key={`${label}-${index}`} x={x(index)} y={height - 6} textAnchor="middle">{label}</text>)}
       </svg>
     </div>
   );
 }
 
-function KeyMetricsPanel({ batch }: { batch: BusinessBatch | null }) {
+function KeyMetricsPanel({ batch, previous }: { batch: BusinessBatch | null; previous: BusinessBatch | null }) {
   const [selected, setSelected] = useState<MetricKey[]>(["gmv", "units"]);
   const toggle = (key: MetricKey) => setSelected((current) => current.includes(key) ? current.length === 1 ? current : current.filter((item) => item !== key) : current.length >= 2 ? current : [...current, key]);
   return (
     <section className="hf-panel hf-key-panel">
       <header className="hf-panel-header">
         <div><h2>关键指标</h2><p>{batch ? `导入时间：${new Date(batch.importedAt).toLocaleString("zh-CN", { hour12: false })}` : "导入时间：—"}</p></div>
-        <div className="hf-period"><strong>{batch ? formatIsoDate(batch.startDate) : "2026/08/29"}</strong><span>–</span><strong>{batch ? formatIsoDate(batch.endDate) : "2026/08/29"}</strong><i /> <small>对比</small><strong>{batch?.overviewComparison ? `${formatIsoDate(batch.overviewComparison.startDate)} - ${formatIsoDate(batch.overviewComparison.endDate)}` : "—"}</strong></div>
+        <div className="hf-period"><strong>{batch ? formatIsoDate(batch.startDate) : "--"}</strong><span>–</span><strong>{batch ? formatIsoDate(batch.endDate) : "--"}</strong><i /> <small>对比</small><strong>{previous ? `${formatIsoDate(previous.startDate)} - ${formatIsoDate(previous.endDate)}` : "暂无可比较周期"}</strong></div>
         <div className="hf-icon-tools"><button aria-label="编辑"><PencilLine size={14} /></button><button aria-label="下载"><Download size={14} /></button><button aria-label="更多"><MoreVertical size={14} /></button></div>
       </header>
-      <MetricSelector selected={selected} onToggle={toggle} batch={batch} />
-      <TrendChart selected={selected} batch={batch} />
+      <MetricSelector selected={selected} onToggle={toggle} batch={batch} previous={previous} />
+      <TrendChart selected={selected} batch={batch} previous={previous} />
     </section>
   );
 }
@@ -325,7 +325,7 @@ function RankingPanel() {
   return (
     <section className="hf-panel hf-ranking-panel">
       <header><div><BarChart3 size={15} /><h2>GMV 排行榜</h2><HelpCircle size={13} /></div><p>你所在类目中 GMV 排名前的店铺</p></header>
-      <ol>{shops.map(([name, score, avatar], index) => <li key={name}><span className={`rank rank-${index + 1}`}>{index + 1}</span><i className={`hf-shop-avatar ${avatar}`}>{name.slice(0, 1)}</i><strong>{name}</strong><b>{score}</b></li>)}</ol>
+      <div className="hf-ranking-empty"><PackageOpen size={24} /><span>当前数据源暂无类目店铺排名</span></div>
     </section>
   );
 }
@@ -344,24 +344,39 @@ function BreakdownPanel({ batch }: { batch: BusinessBatch | null }) {
       { name: "商品卡", value: formatOverviewCurrency(breakdown.productCard, currency), share: shareOf(breakdown.productCard, total), color: "#6559e8", children: [], childValues: [] },
     ];
   }, [batch]);
-  const rows = mode === "content" ? (overviewRows ?? contentBreakdown) : sourceBreakdown;
+  const rows = overviewRows ?? [];
   const toggle = (name: string) => setExpanded((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]);
   const legend = useMemo(() => rows.map((item) => ({ name: item.name, share: item.share, color: item.color })), [rows]);
+  const total = batch?.overviewSummary.gmv ?? null;
+  const donutStyle = batch && total !== null && total > 0 ? { background: `conic-gradient(#6559e8 0 ${shareOf(batch.overviewBreakdown.productCard, total)}, #18a899 ${shareOf(batch.overviewBreakdown.productCard, total)} ${shareOf((batch.overviewBreakdown.productCard ?? 0) + (batch.overviewBreakdown.video ?? 0), total)}, #f4bd45 ${shareOf((batch.overviewBreakdown.productCard ?? 0) + (batch.overviewBreakdown.video ?? 0), total)} 100%)` } : undefined;
   return (
     <section className="hf-panel hf-breakdown-panel">
       <header className="hf-breakdown-header"><div><h2>GMV 拆解</h2><p>数据基于用户下单前最后一次互动的内容类型。　{batch ? `导入时间：${new Date(batch.importedAt).toLocaleString("zh-CN", { hour12: false })}` : "导入时间：—"}</p></div><div className="hf-segmented"><button className={mode === "content" ? "active" : ""} onClick={() => setMode("content")}>按内容类型</button><button className={mode === "source" ? "active" : ""} onClick={() => setMode("source")}>按订单来源</button></div></header>
-      <div className="hf-breakdown-body">
-        <div className="hf-donut-wrap"><div className={`hf-donut ${mode}`} style={overviewRows && mode === "content" ? { background: `conic-gradient(#6559e8 0 ${shareOf(batch?.overviewBreakdown.productCard ?? null, batch?.overviewSummary.gmv ?? null)}, #18a899 ${shareOf(batch?.overviewBreakdown.productCard ?? null, batch?.overviewSummary.gmv ?? null)} ${shareOf((batch?.overviewBreakdown.productCard ?? 0) + (batch?.overviewBreakdown.video ?? 0), batch?.overviewSummary.gmv ?? null)}, #f4bd45 ${shareOf((batch?.overviewBreakdown.productCard ?? 0) + (batch?.overviewBreakdown.video ?? 0), batch?.overviewSummary.gmv ?? null)} 100%)` } : undefined}><span><strong>GMV</strong><small>{batch ? formatOverviewCurrency(batch.overviewSummary.gmv, batch.currencySymbol) : "RM5.99"}</small></span></div></div>
+      {mode === "source" ? <div className="hf-breakdown-source-empty">当前导出文件未提供订单来源拆分</div> : !batch ? <div className="hf-breakdown-source-empty">请先导入本期三份官方 Excel</div> : <div className="hf-breakdown-body">
+        <div className="hf-donut-wrap"><div className={`hf-donut ${mode}`} style={donutStyle}><span><strong>GMV</strong><small>{formatOverviewCurrency(batch.overviewSummary.gmv, batch.currencySymbol)}</small></span></div></div>
         <div className="hf-donut-legend">{legend.map((item) => <span key={item.name}><i style={{ background: item.color }} />{item.name}<strong>{item.share}</strong></span>)}</div>
-        <div className="hf-breakdown-list">{rows.map((row) => <div className="hf-breakdown-group" key={row.name}><button className="hf-breakdown-row" onClick={() => row.children.length && toggle(row.name)}><span>{row.children.length ? expanded.includes(row.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <i className="row-indent" />}<i className="row-dot" style={{ background: row.color }} /><strong>{row.name}</strong>{row.children.length > 0 && <small>查看数据分析</small>}</span><b>{row.value}</b><em>▼ {row.share}</em><TrendingUp size={13} /></button>{expanded.includes(row.name) && row.children.map((child, index) => <div className="hf-breakdown-child" key={child}><span><ChevronRight size={13} />{child} <small>（贡献度 {row.share}）</small></span><b>{row.childValues?.[index] ?? (batch ? formatOverviewCurrency(0, batch.currencySymbol) : "RM0.00")}</b><em>◆ --</em></div>)}</div>)}</div>
-      </div>
+        <div className="hf-breakdown-list">{rows.map((row) => <div className="hf-breakdown-group" key={row.name}><button className="hf-breakdown-row" onClick={() => row.children.length && toggle(row.name)}><span>{row.children.length ? expanded.includes(row.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <i className="row-indent" />}<i className="row-dot" style={{ background: row.color }} /><strong>{row.name}</strong>{row.children.length > 0 && <small>查看数据分析</small>}</span><b>{row.value}</b><em>{row.share}</em></button>{expanded.includes(row.name) && row.children.map((child, index) => <div className="hf-breakdown-child" key={child}><span><ChevronRight size={13} />{child} <small>（贡献度 {row.share}）</small></span><b>{row.childValues[index]}</b><em>--</em></div>)}</div>)}</div>
+      </div>}
     </section>
   );
 }
 
+interface HighFidelityAnalyticsState {
+  batches: BusinessBatch[];
+  activeBatchId: string | null;
+}
+
+const initialHighFidelityState = (): HighFidelityAnalyticsState => ({ batches: [], activeBatchId: null });
+
+function AnalyticsDataNotice({ batch, visible, onClose }: { batch: BusinessBatch | null; visible: boolean; onClose: () => void }) {
+  if (!batch || !visible) return null;
+  if (!batch.qualityIssues.length) return <div className="hf-parse-status">当前数据已完成本地解析</div>;
+  return <div className="hf-delay-notice"><AlertTriangleIcon /><span>数据质量提示：{batch.qualityIssues.map((issue) => issue.message).join("；")}</span><button aria-label="关闭提示" onClick={onClose}><X size={14} /></button></div>;
+}
+
 function AnalyticsShell() {
   const [notice, setNotice] = useState(true);
-  const [overviewBatch, setOverviewBatch] = useState<BusinessBatch | null>(null);
+  const [state, setState, restored] = usePersistedState<HighFidelityAnalyticsState>("high-fidelity-analytics", initialHighFidelityState);
   const [overviewError, setOverviewError] = useState("");
   const overviewInput = useRef<HTMLInputElement>(null);
   const [section, setSection] = useState<"store" | "card" | "productData">("store");
@@ -370,11 +385,26 @@ function AnalyticsShell() {
   const [metricDraft, setMetricDraft] = useState(defaultSelectedMetrics);
   const [metricModal, setMetricModal] = useState(false);
   const [detailProduct, setDetailProduct] = useState<string | null>(null);
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const batches = useMemo(() => sortBatches(state.batches), [state.batches]);
+  const overviewBatch = batches.find((batch) => batch.id === state.activeBatchId) ?? batches[0] ?? null;
+  const previousBatch = useMemo(() => selectPreviousBatch(batches, overviewBatch), [batches, overviewBatch]);
+  useEffect(() => {
+    if (!restored || !batches.length || (state.activeBatchId && batches.some((batch) => batch.id === state.activeBatchId))) return;
+    setState((current) => ({ ...current, activeBatchId: batches[0].id }));
+  }, [batches, restored, setState, state.activeBatchId]);
   const openMetricModal = () => { setMetricDraft(selectedMetrics); setMetricModal(true); };
   const toggleMetric = (name: string) => setMetricDraft((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]);
   const importOverview = async (files: FileList | File[]) => {
     setOverviewError("");
-    try { const next = await parseBusinessFiles(Array.from(files)); setOverviewBatch(next); }
+    try {
+      const next = await parseBusinessFiles(Array.from(files));
+      setState((current) => {
+        const saved = sortBatches([...current.batches.filter((batch) => batch.startDate !== next.startDate || batch.endDate !== next.endDate), next]);
+        return { ...current, batches: saved, activeBatchId: saved[0]?.id ?? null };
+      });
+      setNotice(true);
+    }
     catch (caught) { setOverviewError(caught instanceof Error ? caught.message : "文件解析失败，请选择同一周期的三份官方 Excel。"); }
     finally { if (overviewInput.current) overviewInput.current.value = ""; }
   };
@@ -382,13 +412,13 @@ function AnalyticsShell() {
     <main className="hf-analytics-shell">
       <header className="hf-page-header">
         <div><h1>数据分析</h1><nav aria-label="分析导航"><button className={section === "store" ? "active" : ""} onClick={() => { setSection("store"); setDetailProduct(null); }}>店铺数据分析</button><button>成长和数据分析</button><button>内容分析</button><button className={section === "card" ? "active" : ""} onClick={() => { setSection("card"); setDetailProduct(null); }}>商品卡</button><button className={section === "productData" ? "active" : ""} onClick={() => { setSection("productData"); setDetailProduct(null); }}>商品数据分析</button><button>营销数据分析</button><button>售后数据分析</button></nav></div>
-        <div className="hf-date-control"><span>(GMT+08:00)</span><button>最近 7 天：　{overviewBatch ? `${formatIsoDate(overviewBatch.startDate)}　–　${formatIsoDate(overviewBatch.endDate)}` : section === "productData" ? "未导入周期" : "2026/08/23　–　2026/08/29"} <CalendarDays size={14} /></button><button className="compare-date">较前 7 日</button>{section === "store" && <button className="hf-overview-import" onClick={() => overviewInput.current?.click()}>导入本期数据</button>}</div>
+        <div className="hf-date-control"><span>(GMT+08:00)</span><div className="hf-period-picker"><button onClick={() => setPeriodOpen((open) => !open)}>最近 7 天：　{overviewBatch ? `${formatIsoDate(overviewBatch.startDate)}　–　${formatIsoDate(overviewBatch.endDate)}` : "未导入周期"} <CalendarDays size={14} /></button>{periodOpen && <div className="hf-period-menu">{batches.length ? <>{batches.map((batch) => <button key={batch.id} className={batch.id === overviewBatch?.id ? "active" : ""} onClick={() => { setState((current) => ({ ...current, activeBatchId: batch.id })); setDetailProduct(null); setPeriodOpen(false); }}>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</button>)}<small>当前 {overviewBatch ? `${formatIsoDate(overviewBatch.startDate)} – ${formatIsoDate(overviewBatch.endDate)}` : "--"} · 已保存 {batches.length} 个周期</small></> : <span>尚未导入完整周期</span>}</div>}</div><small className="hf-history-count">已保存 {batches.length} 个周期</small><button className="compare-date">{previousBatch ? `对比 ${formatIsoDate(previousBatch.startDate)} – ${formatIsoDate(previousBatch.endDate)}` : "暂无可比较周期"}</button>{section === "store" && <button className="hf-overview-import" onClick={() => overviewInput.current?.click()}>导入本期数据</button>}</div>
       </header>
-      {section === "productData" ? <><div className="hf-main-content"><>{notice && <div className="hf-delay-notice"><AlertTriangleIcon /><span>目前，部分数据更新存在延迟，因此展示的数据可能无法反映最新的业务状态。我们的团队正在努力解决此问题。请稍后再来查看。</span><button aria-label="关闭提示" onClick={() => setNotice(false)}><X size={14} /></button></div>}</></div><ProductAnalyticsList batch={overviewBatch} /></> : <div className="hf-analytics-layout">
+      {section === "productData" ? <><div className="hf-main-content"><AnalyticsDataNotice batch={overviewBatch} visible={notice} onClose={() => setNotice(false)} /></div><ProductAnalyticsList batch={overviewBatch} previousBatch={previousBatch} batches={batches} /></> : <div className="hf-analytics-layout">
         {section === "store" ? <AnalyticsSidebar /> : <ProductCardSidebar page={cardPage} onPage={(page) => { setCardPage(page); setDetailProduct(null); }} />}
         <div className="hf-main-content">
-          {notice && <div className="hf-delay-notice"><AlertTriangleIcon /><span>目前，部分数据更新存在延迟，因此展示的数据可能无法反映最新的业务状态。我们的团队正在努力解决此问题。请稍后再来查看。</span><button aria-label="关闭提示" onClick={() => setNotice(false)}><X size={14} /></button></div>}
-          {section === "store" ? <><div className="hf-dashboard-grid"><KeyMetricsPanel batch={overviewBatch} /><RankingPanel /></div><BreakdownPanel batch={overviewBatch} />{overviewError && <div className="hf-overview-error" role="alert"><X size={13} />{overviewError}</div>}</> : detailProduct ? <ProductDetailPlaceholder name={detailProduct} onBack={() => setDetailProduct(null)} /> : cardPage === "performance" ? <CardPerformancePage batch={overviewBatch} onConfigure={openMetricModal} /> : <CardDetailsPage batch={overviewBatch} onConfigure={openMetricModal} onOpenProduct={setDetailProduct} />}
+          <AnalyticsDataNotice batch={overviewBatch} visible={notice} onClose={() => setNotice(false)} />
+          {section === "store" ? <><div className="hf-dashboard-grid"><KeyMetricsPanel batch={overviewBatch} previous={previousBatch} /><RankingPanel /></div><BreakdownPanel batch={overviewBatch} />{overviewError && <div className="hf-overview-error" role="alert"><X size={13} />{overviewError}</div>}</> : detailProduct ? <ProductDetailPlaceholder name={detailProduct} onBack={() => setDetailProduct(null)} /> : cardPage === "performance" ? <CardPerformancePage batch={overviewBatch} previous={previousBatch} onConfigure={openMetricModal} /> : <CardDetailsPage batch={overviewBatch} onConfigure={openMetricModal} onOpenProduct={setDetailProduct} />}
         </div>
       </div>}
       <input ref={overviewInput} type="file" multiple accept=".xlsx,.xls" hidden onChange={(event) => void importOverview(event.target.files ?? [])} />
