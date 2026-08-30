@@ -26,7 +26,7 @@ import {
 import "./analyticsPrototype.css";
 import ProductAnalyticsList from "./ProductAnalyticsList";
 import { parseBusinessFiles } from "./businessParser";
-import type { BusinessBatch } from "./types";
+import type { BusinessBatch, BusinessProductRecord } from "./types";
 
 type MetricKey = "gmv" | "units" | "skuOrders" | "orders";
 type CardPage = "performance" | "details";
@@ -87,21 +87,6 @@ const trafficSources = [
   ["店铺", "3.65% | 356", "57", "RM0.00", "0%"],
   ["活动", "1.00% | 98", "69", "RM0.00", "0%"],
   ["其他", "13.40% | 1.31K", "720", "RM23.71", "0.18%"],
-];
-
-const mockProducts = [
-  ["Casing Silikon Cecair Premium Samsung S26 S25 S24 Ultra", "1735359360857703966", "1.2K", "110", "9.17%", "3", "6", "lavender"],
-  ["Kes Magnetik Berlian Berkilau untuk Telefon", "1735176057008981534", "1.10K", "51", "4.63%", "3", "4", "amber"],
-  ["Sarung telefon silikon lembut premium", "1735175264413320734", "1.01K", "46", "4.58%", "6", "4", "rose"],
-  ["Sarung Telefon 16 Tukar 17 Pro Max", "1735359267280750110", "335", "19", "5.67%", "1", "1", "orange"],
-  ["Sarung untuk Samsung, Serasi Pelbagai Model", "1735110064976332318", "290", "15", "5.17%", "0", "0", "slate"],
-  ["Sarung lembut TPU ultra nipis Redmi", "1735198338034861598", "259", "21", "8.11%", "0", "0", "blue"],
-  ["Sarung Telefon untuk Redmi kalis jatuh", "1735201886840194590", "257", "3", "1.17%", "1", "1", "teal"],
-  ["Sarung Telefon Lutsinar Anti Calar", "1735359291165894174", "223", "8", "3.59%", "0", "0", "mint"],
-  ["Minimal titik gelombang angin untuk iPhone", "1735176882664791343", "211", "10", "4.74%", "0", "0", "cream"],
-  ["Cooling Master Sarung Magnetik Premium", "1735201605488510494", "196", "17", "8.67%", "0", "0", "navy"],
-  ["Clear Space Casing Telefon Shockproof", "1735256370918720345", "185", "12", "6.49%", "0", "0", "violet"],
-  ["Sarung Ring Stand untuk Android", "1735289076110369271", "172", "9", "5.23%", "0", "0", "coral"],
 ];
 
 const metricGroups = [
@@ -186,20 +171,36 @@ function CardPerformancePage({ onConfigure }: { onConfigure: () => void }) {
   );
 }
 
-function CardDetailsPage({ onConfigure, onOpenProduct }: { onConfigure: () => void; onOpenProduct: (name: string) => void }) {
+type DetailSortField = "uniqueImpressions" | "uniqueClicks" | "uniqueCtr" | "customers";
+
+const detailMetricValue = (product: BusinessProductRecord, field: DetailSortField): number | null => product.card[field];
+const detailCount = (value: number | null): string => value === null ? "--" : value.toLocaleString("en-GB", { maximumFractionDigits: 0 });
+const detailRate = (value: number | null): string => value === null ? "--" : `${value.toFixed(2)}%`;
+
+function CardDetailsPage({ batch, onConfigure, onOpenProduct }: { batch: BusinessBatch | null; onConfigure: () => void; onOpenProduct: (name: string) => void }) {
   const [query, setQuery] = useState("");
   const [favorite, setFavorite] = useState(false);
   const [diagnosis, setDiagnosis] = useState(false);
   const [page, setPage] = useState(1);
-  const list = mockProducts.filter((item) => !query || item[0].toLowerCase().includes(query.toLowerCase()) || item[1].includes(query));
+  const [sort, setSort] = useState<{ field: DetailSortField | null; direction: "asc" | "desc" | null }>({ field: null, direction: null });
+  const list = (batch?.products ?? []).filter((product) => !query || product.name.toLowerCase().includes(query.toLowerCase()) || product.productId.includes(query)).sort((left, right) => {
+    if (!sort.field || !sort.direction) return left.originalIndex - right.originalIndex;
+    const a = detailMetricValue(left, sort.field); const b = detailMetricValue(right, sort.field);
+    if (a === null && b === null) return left.originalIndex - right.originalIndex;
+    if (a === null) return 1; if (b === null) return -1;
+    return sort.direction === "desc" ? b - a : a - b;
+  });
   const visible = list.slice((page - 1) * 10, page * 10);
+  const pageCount = Math.max(1, Math.ceil(list.length / 10));
+  const setSortField = (field: DetailSortField) => { setPage(1); setSort((current) => current.field !== field ? { field, direction: "desc" } : current.direction === "desc" ? { field, direction: "asc" } : { field: null, direction: null }); };
+  const sortMark = (field: DetailSortField) => sort.field === field ? sort.direction === "desc" ? "↓" : "↑" : "↕";
   return (
     <section className="hf-panel hf-product-list-panel">
       <header><h2>商品卡列表</h2></header>
       <div className="hf-product-search"><Search size={14} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="输入商品 ID 或商品名称" /></div>
       <div className="hf-product-toolbar"><div className="hf-product-tabs"><button className={!favorite ? "active" : ""} onClick={() => setFavorite(false)}>全部</button><button className={favorite ? "active" : ""} onClick={() => setFavorite(true)}><Star size={12} /> 已收藏</button></div><span>类目</span><div className="hf-category-select"><strong>全部类目</strong><X size={12} /><ChevronDown size={13} /></div><div className="hf-product-actions"><label className="hf-switch-label"><button className={diagnosis ? "on" : ""} onClick={() => setDiagnosis(!diagnosis)}><i /></button>诊断模式 <HelpCircle size={12} /></label><button onClick={onConfigure}><Settings2 size={13} /> 配置指标</button><button><Download size={13} /> 导出数据</button><button className="icon-only"><MoreVertical size={14} /></button></div></div>
-      <div className="hf-product-table-wrap"><table className="hf-product-table"><thead><tr><th>商品卡名称 <HelpCircle size={11} /></th><th>曝光用户数 <ArrowDown size={12} /></th><th>点击人数</th><th>曝光到点击转化率</th><th>日客户数</th><th>SKU</th><th>操作</th></tr></thead><tbody>{visible.map((item) => <tr key={item[1]}><td><div className="hf-product-identity"><i className={`hf-thumb ${item[7]}`}>{item[0].slice(0, 1)}</i><span><strong>{item[0]}</strong><small>ID：{item[1]} <button aria-label="复制 Product ID"><Copy size={11} /></button></small></span></div></td><td>{item[2]}</td><td>{item[3]}</td><td>{item[4]}</td><td>{item[5]}</td><td>{item[6]}</td><td><button className="hf-detail-action" onClick={() => onOpenProduct(item[0])}>详情</button></td></tr>)}</tbody></table></div>
-      <footer className="hf-pagination"><button disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={13} /></button>{[1, 2, 3].map((item) => <button key={item} className={page === item ? "active" : ""} onClick={() => setPage(item)}>{item}</button>)}<button onClick={() => setPage((current) => Math.min(3, current + 1))}><ChevronRight size={13} /></button><select aria-label="每页条数" defaultValue="10"><option value="10">10/Page</option><option value="20">20/Page</option></select></footer>
+      <div className="hf-product-table-wrap"><table className="hf-product-table"><thead><tr><th>商品卡名称 <HelpCircle size={11} /></th><th className={sort.field === "uniqueImpressions" ? "sorted" : ""}><button onClick={() => setSortField("uniqueImpressions")}>曝光用户数 {sortMark("uniqueImpressions")}</button></th><th className={sort.field === "uniqueClicks" ? "sorted" : ""}><button onClick={() => setSortField("uniqueClicks")}>点击人数 {sortMark("uniqueClicks")}</button></th><th className={sort.field === "uniqueCtr" ? "sorted" : ""}><button onClick={() => setSortField("uniqueCtr")}>曝光到点击转化率 {sortMark("uniqueCtr")}</button></th><th className={sort.field === "customers" ? "sorted" : ""}><button onClick={() => setSortField("customers")}>日客户数 {sortMark("customers")}</button></th><th>SKU</th><th>操作</th></tr></thead><tbody>{visible.map((product) => <tr key={product.productId}><td><div className="hf-product-identity"><i className="hf-thumb lavender">{product.name.slice(0, 1)}</i><span><strong>{product.name}</strong><small>ID：{product.productId} <button aria-label="复制 Product ID"><Copy size={11} /></button></small><em className="hf-real-status">{product.publishStatus || "未填写"}</em></span></div></td><td className={sort.field === "uniqueImpressions" ? "sorted" : ""}>{detailCount(product.card.uniqueImpressions)}</td><td className={sort.field === "uniqueClicks" ? "sorted" : ""}>{detailCount(product.card.uniqueClicks)}</td><td className={sort.field === "uniqueCtr" ? "sorted" : ""}>{detailRate(product.card.uniqueCtr)}</td><td className={sort.field === "customers" ? "sorted" : ""}>{detailCount(product.card.customers)}</td><td>--</td><td><button className="hf-detail-action" onClick={() => onOpenProduct(product.name)}>详情</button></td></tr>)}</tbody></table>{!visible.length && <div className="hf-real-empty">{batch ? "没有符合条件的真实商品数据" : "请先在店铺数据分析首页导入三份官方 Excel"}</div>}</div>
+      <footer className="hf-pagination"><button disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={13} /></button>{Array.from({ length: Math.min(pageCount, 3) }, (_, index) => index + 1).map((item) => <button key={item} className={page === item ? "active" : ""} onClick={() => setPage(item)}>{item}</button>)}<button disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}><ChevronRight size={13} /></button><select aria-label="每页条数" defaultValue="10"><option value="10">10/Page</option><option value="20">20/Page</option></select></footer>
     </section>
   );
 }
@@ -349,7 +350,7 @@ function AnalyticsShell() {
         {section === "store" ? <AnalyticsSidebar /> : <ProductCardSidebar page={cardPage} onPage={(page) => { setCardPage(page); setDetailProduct(null); }} />}
         <div className="hf-main-content">
           {notice && <div className="hf-delay-notice"><AlertTriangleIcon /><span>目前，部分数据更新存在延迟，因此展示的数据可能无法反映最新的业务状态。我们的团队正在努力解决此问题。请稍后再来查看。</span><button aria-label="关闭提示" onClick={() => setNotice(false)}><X size={14} /></button></div>}
-          {section === "store" ? <><div className="hf-dashboard-grid"><KeyMetricsPanel batch={overviewBatch} /><RankingPanel /></div><BreakdownPanel batch={overviewBatch} />{overviewError && <div className="hf-overview-error" role="alert"><X size={13} />{overviewError}</div>}</> : detailProduct ? <ProductDetailPlaceholder name={detailProduct} onBack={() => setDetailProduct(null)} /> : cardPage === "performance" ? <CardPerformancePage onConfigure={openMetricModal} /> : <CardDetailsPage onConfigure={openMetricModal} onOpenProduct={setDetailProduct} />}
+          {section === "store" ? <><div className="hf-dashboard-grid"><KeyMetricsPanel batch={overviewBatch} /><RankingPanel /></div><BreakdownPanel batch={overviewBatch} />{overviewError && <div className="hf-overview-error" role="alert"><X size={13} />{overviewError}</div>}</> : detailProduct ? <ProductDetailPlaceholder name={detailProduct} onBack={() => setDetailProduct(null)} /> : cardPage === "performance" ? <CardPerformancePage onConfigure={openMetricModal} /> : <CardDetailsPage batch={overviewBatch} onConfigure={openMetricModal} onOpenProduct={setDetailProduct} />}
         </div>
       </div>}
       <input ref={overviewInput} type="file" multiple accept=".xlsx,.xls" hidden onChange={(event) => void importOverview(event.target.files ?? [])} />
