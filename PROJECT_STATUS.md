@@ -22,6 +22,10 @@
   支持有点击无成交、有加购无成交快捷条件；
   筛选基于当前来源真实数据，并与搜索、排序、分页、导出正确组合。
 - 已使用 `C:\Users\Atlas\Desktop\tkshop后台导出` 全部六份 UK 官方 Excel 完成批量自动识别、分类、周期确认和刷新回归；表现明细辅助文件无未知错误，`npm run build` 通过。
+- UK Visual Fidelity Calibration Phase 1 已完成：
+  建立 UK专用视觉层与 Playwright视觉回归流程；
+  英国截图可作为本地视觉真源与当前页面自动生成diff；
+  完成公共 UK Shell 与五个真实页面第一轮比例/字体/间距校准。
 
 ## 当前
 
@@ -33,4 +37,4 @@
 
 ## 下一步
 
-- 恢复 Stage 5：UK经营分析备份、恢复、历史周期管理与清空防误操作。
+- 根据 visual diff 继续 Phase 2 页面级精修；完成后恢复 Stage 5 数据备份与历史管理。

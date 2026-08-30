@@ -2,3 +2,5 @@ node_modules/
 dist/
 .DS_Store
 *.local
+.visual-reference.local.json
+artifacts/visual/

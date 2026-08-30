@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import "./analyticsPrototype.css";
+import "./ukAnalytics/ukSellerCenter.css";
 import ProductAnalyticsList from "./ProductAnalyticsList";
 import UkAnalyticsShell from "./UkAnalyticsShell";
 import { getMetricDelta, selectPreviousBatch } from "./businessComparison";

@@ -1,0 +1,113 @@
+/* UK Seller Center visual layer. Values are calibrated against the 2048px reference exports. */
+.uk-analytics-shell {
+  --uk-content-width: 1160px;
+  --uk-sidebar-width: 210px;
+  --uk-font-title: 25px;
+  --uk-font-section: 13px;
+  --uk-font-body: 10px;
+  --uk-font-small: 8px;
+  --uk-bg: #f5f6f6;
+  --uk-panel-bg: #fff;
+  --uk-border: #e8ecec;
+  --uk-text: #303941;
+  --uk-muted: #858d95;
+  --uk-teal: #0d9d99;
+  --uk-teal-soft: #e9f8f7;
+  --uk-gap-xs: 6px;
+  --uk-gap-sm: 10px;
+  --uk-gap-md: 14px;
+  --uk-panel-padding: 16px;
+  --uk-radius: 3px;
+  width: min(var(--uk-content-width), calc(100vw - 88px));
+  min-height: calc(100vh - 72px);
+  margin: 0 auto;
+  padding: 22px 0 28px;
+  color: var(--uk-text);
+  background: var(--uk-bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+  font-size: var(--uk-font-body);
+}
+
+.uk-analytics-shell, .uk-analytics-shell * { box-sizing: border-box; }
+.uk-analytics-shell .hf-page-header { min-height: 70px; align-items: flex-start; gap: var(--uk-gap-md); }
+.uk-analytics-shell .hf-page-header h1 { margin: 0 0 14px; color: #171d23; font-size: var(--uk-font-title); font-weight: 600; line-height: 1; letter-spacing: -.045em; }
+.uk-analytics-shell .hf-page-header nav { gap: 24px; }
+.uk-analytics-shell .hf-page-header nav button { padding-bottom: 10px; color: var(--uk-text); font-size: var(--uk-font-body); font-weight: 400; line-height: 1.2; }
+.uk-analytics-shell .hf-page-header nav button.active { color: #1f282e; font-weight: 500; }
+.uk-analytics-shell .hf-page-header nav button.active::after { bottom: 2px; height: 2px; background: var(--uk-teal); }
+.uk-analytics-shell .hf-date-control { gap: var(--uk-gap-xs); padding-top: 0; }
+.uk-analytics-shell .hf-date-control > span { color: var(--uk-muted); font-size: var(--uk-font-body); }
+.uk-analytics-shell .hf-date-control button { height: 31px; padding: 0 10px; color: #4b555d; border-color: var(--uk-border); border-radius: var(--uk-radius); font-size: var(--uk-font-body); }
+.uk-analytics-shell .hf-period-menu { top: 35px; width: 230px; border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .hf-data-manager-trigger { color: var(--uk-muted) !important; font-size: var(--uk-font-small) !important; }
+.uk-analytics-shell .hf-data-manager-trigger:hover { color: var(--uk-teal) !important; background: var(--uk-teal-soft) !important; }
+.uk-analytics-shell .hf-overview-import { height: 30px; color: #fff; background: var(--uk-teal); border-radius: var(--uk-radius); font-size: var(--uk-font-small); }
+.uk-analytics-shell .hf-data-manager { width: 380px; border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .uk-delay-notice { min-height: 38px; margin: 0 0 var(--uk-gap-md); padding: 0 14px; color: #80652b; background: #fff1c9; border-color: #f6e4b1; border-radius: var(--uk-radius); font-size: var(--uk-font-body); line-height: 38px; }
+.uk-analytics-shell .hf-analytics-layout { grid-template-columns: var(--uk-sidebar-width) minmax(0, 1fr); gap: var(--uk-gap-md); }
+.uk-analytics-shell .hf-sidebar { min-height: 595px; padding: 14px 8px; background: var(--uk-panel-bg); border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .hf-sidebar section > span { padding: 0 10px 7px; color: var(--uk-muted); font-size: var(--uk-font-small); }
+.uk-analytics-shell .hf-sidebar section > button { min-height: 32px; padding: 0 18px; color: #53606a; font-size: var(--uk-font-body); font-weight: 400; }
+.uk-analytics-shell .hf-sidebar section > button.active { color: var(--uk-teal); background: var(--uk-teal-soft); font-weight: 500; }
+.uk-analytics-shell .hf-panel { background: var(--uk-panel-bg); border: 1px solid var(--uk-border); border-radius: var(--uk-radius); box-shadow: none; }
+.uk-analytics-shell .uk-main-content, .uk-analytics-shell .hf-main-content { min-width: 0; }
+
+/* Store data analysis: keep the business card and right rail close to the reference proportions. */
+.uk-analytics-shell .uk-store-page { grid-template-columns: minmax(0, 2.2fr) minmax(240px, .9fr); gap: var(--uk-gap-md); }
+.uk-analytics-shell .uk-business-panel { padding: var(--uk-panel-padding) 17px 13px; }
+.uk-analytics-shell .uk-business-panel h2, .uk-analytics-shell .uk-store-side h2, .uk-analytics-shell .uk-sales-source h2, .uk-analytics-shell .uk-mall-page h2 { color: var(--uk-text); font-size: var(--uk-font-section); font-weight: 600; }
+.uk-analytics-shell .uk-business-panel > header { min-height: 32px; }
+.uk-analytics-shell .uk-store-metrics { margin-top: 13px; }
+.uk-analytics-shell .uk-store-metrics article { min-height: 89px; padding: 12px; border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .uk-store-metrics article span, .uk-analytics-shell .uk-today-panel small { color: var(--uk-muted); font-size: var(--uk-font-small); }
+.uk-analytics-shell .uk-store-metrics article strong { color: var(--uk-text); font-size: 16px; font-weight: 500; }
+.uk-analytics-shell .uk-store-trend { min-height: 274px; margin-top: 12px; padding: 13px 14px; border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .uk-today-panel, .uk-analytics-shell .uk-empty-side { padding: var(--uk-panel-padding); }
+.uk-analytics-shell .uk-today-panel > div { gap: 13px 8px; margin-top: 17px; }
+.uk-analytics-shell .uk-today-panel strong { color: var(--uk-text); font-size: 14px; font-weight: 500; }
+.uk-analytics-shell .uk-sales-source { min-height: 240px; padding: var(--uk-panel-padding); }
+
+/* Mall overview and keyword table: reduce large empty intervals without changing data. */
+.uk-analytics-shell .uk-mall-page { gap: var(--uk-gap-md); }
+.uk-analytics-shell .uk-mall-activity { min-height: 60px; padding: 0 var(--uk-panel-padding); line-height: 60px; }
+.uk-analytics-shell .uk-mall-help { gap: var(--uk-gap-md); }
+.uk-analytics-shell .uk-mall-help article { min-height: 118px; padding: var(--uk-panel-padding); }
+.uk-analytics-shell .uk-mall-kpis { padding: var(--uk-panel-padding); }
+.uk-analytics-shell .uk-mall-kpis > div { margin-top: 13px; }
+.uk-analytics-shell .uk-mall-kpis article { min-height: 105px; padding: 11px; }
+.uk-analytics-shell .uk-mall-trend { min-height: 270px; padding: var(--uk-panel-padding); }
+.uk-analytics-shell .uk-keywords-page { gap: var(--uk-gap-md); }
+.uk-analytics-shell .uk-keywords-notice { min-height: 38px; line-height: 38px; }
+.uk-analytics-shell .uk-keyword-table-panel > header { min-height: 55px; padding: 0 var(--uk-panel-padding); }
+.uk-analytics-shell .uk-keyword-table th { height: 37px; }
+.uk-analytics-shell .uk-keyword-table td { height: 54px; }
+.uk-analytics-shell .uk-keyword-pagination { min-height: 47px; padding: 0 var(--uk-panel-padding); }
+
+/* Traffic page: preserve its real metrics and tune the vertical rhythm only. */
+.uk-analytics-shell .uk-traffic-summary, .uk-analytics-shell .uk-traffic-trend { border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .uk-traffic-summary { padding: 15px 18px 8px; }
+.uk-analytics-shell .uk-traffic-trend { padding: 11px 18px 17px; }
+.uk-analytics-shell .uk-traffic-metric-group { margin-top: 13px; }
+.uk-analytics-shell .uk-traffic-metric-card { min-height: 75px; border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .uk-trend-chart svg { height: 180px; }
+.uk-analytics-shell .uk-traffic-funnel, .uk-analytics-shell .uk-traffic-breakdown { border-color: var(--uk-border); border-radius: var(--uk-radius); }
+.uk-analytics-shell .uk-traffic-page .uk-traffic-funnel { margin-bottom: 12px; padding: 16px 18px 20px; }
+.uk-analytics-shell .uk-traffic-page .uk-funnel-step { min-height: 46px; }
+.uk-analytics-shell .uk-traffic-page .uk-traffic-breakdown td { height: 58px; }
+
+/* Product details: visual calibration only; wide-table mechanics remain in the existing page layer. */
+.uk-analytics-shell .uk-product-kind-tabs { min-height: 44px; padding: 0 18px; }
+.uk-analytics-shell .uk-product-source-tabs { padding-top: 11px; }
+.uk-analytics-shell .uk-product-toolbar { min-height: 56px; padding: 9px 18px; }
+.uk-analytics-shell .uk-product-table th { height: 38px; }
+.uk-analytics-shell .uk-product-table td { height: 66px; }
+.uk-analytics-shell .uk-product-identity strong { color: var(--uk-text); font-size: var(--uk-font-body); }
+.uk-analytics-shell .uk-product-identity small, .uk-analytics-shell .uk-product-identity em { font-size: var(--uk-font-small); }
+.uk-analytics-shell .uk-pagination { min-height: 45px; font-size: var(--uk-font-small); }
+
+@media (max-width: 1100px) {
+  .uk-analytics-shell { width: calc(100vw - 52px); }
+  .uk-analytics-shell .hf-analytics-layout { grid-template-columns: 190px minmax(0, 1fr); }
+  .uk-analytics-shell .uk-store-page { grid-template-columns: 1fr; }
+  .uk-analytics-shell .uk-advanced-filter-popover { right: -24px; width: 390px; }
+}
