@@ -453,6 +453,35 @@
 .uk-product-page .uk-product-sticky-table th.uk-product-column { position: sticky; left: 0; z-index: 2; }
 .uk-product-page .uk-product-table-placeholder-head { visibility: hidden; }
 
+/* Product detail interaction pass: fixed controls, body-only vertical scrolling, and a top horizontal proxy. */
+.uk-product-page .uk-product-table-wrap { overflow: visible; }
+.uk-product-page .uk-product-table-scroll { height: 620px; max-height: calc(100vh - 220px); min-height: 360px; overflow: auto; scrollbar-gutter: stable; }
+.uk-product-page .uk-product-table { width: max-content; min-width: 0; table-layout: fixed; }
+.uk-product-page .uk-product-table .uk-product-column { width: 240px; min-width: 240px; }
+.uk-product-page .uk-product-table .uk-action-column { width: 90px; min-width: 90px; }
+.uk-product-page .uk-product-table th:not(.uk-product-column):not(.uk-action-column), .uk-product-page .uk-product-table td:not(.uk-product-column):not(.uk-action-column) { min-width: 105px; }
+.uk-product-page .uk-product-table .uk-metric-gmv, .uk-product-page .uk-product-table .uk-metric-aov { min-width: 110px; }
+.uk-product-page .uk-product-table .uk-metric-impressions { min-width: 145px; }
+.uk-product-page .uk-product-table .uk-metric-unique-impressions { min-width: 155px; }
+.uk-product-page .uk-product-table .uk-metric-unique-clicks, .uk-product-page .uk-product-table .uk-metric-add-to-cart-users { min-width: 125px; }
+.uk-product-page .uk-product-table th.uk-product-column, .uk-product-page .uk-product-table td.uk-product-column { left: 0; }
+.uk-product-page .uk-product-table td.uk-product-column { z-index: 2; }
+.uk-product-page .uk-product-table th.uk-action-column, .uk-product-page .uk-product-table td.uk-action-column { right: 0; }
+.uk-product-page .uk-product-table td.uk-action-column { z-index: 2; }
+.uk-product-page .uk-product-table th.uk-product-column, .uk-product-page .uk-product-table th.uk-action-column { z-index: 6; }
+.uk-product-page .uk-product-table th.uk-product-column, .uk-product-page .uk-product-table td.uk-product-column { box-shadow: 5px 0 8px -8px rgba(27, 42, 47, .32); }
+.uk-product-page .uk-product-table th.uk-action-column, .uk-product-page .uk-product-table td.uk-action-column { box-shadow: -5px 0 8px -8px rgba(27, 42, 47, .32); }
+.uk-product-page .uk-product-table th.uk-product-column { background: #f7f8f8; }
+.uk-product-page .uk-product-table td.uk-product-column, .uk-product-page .uk-product-table td.uk-action-column { background: #fff; }
+.uk-product-page .uk-product-identity > span { max-width: 175px; }
+.uk-product-page .uk-product-table th button { white-space: nowrap; }
+.uk-product-page .uk-pagination { width: auto; min-width: 0; }
+.uk-product-page .uk-horizontal-scroll-control { display: flex; align-items: center; gap: 8px; min-width: 210px; margin-left: auto; color: #858d95; font-size: 8px; }
+.uk-product-page .uk-horizontal-scroll-control input[type="range"] { width: 170px; height: 14px; margin: 0; accent-color: var(--uk-teal); cursor: ew-resize; }
+.uk-product-page .uk-horizontal-scroll-control input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
+
+@media (max-width: 1100px) { .uk-product-page .uk-product-table-scroll { height: 560px; max-height: calc(100vh - 230px); min-height: 340px; }.uk-product-page .uk-horizontal-scroll-control { min-width: 180px; }.uk-product-page .uk-horizontal-scroll-control input[type="range"] { width: 140px; } }
+
 /* Product data analytics: independent Seller Center detailed-information list */
 .hf-product-analytics-layout { position: relative; }
 .hf-product-analytics-sidebar { min-height: 595px; }
