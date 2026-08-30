@@ -18,17 +18,26 @@ await page.goto(config.baseUrl, { waitUntil: "networkidle" });
 await page.getByRole("button", { name: "经营分析", exact: true }).click();
 await page.waitForTimeout(220);
 await page.locator(".uk-import-input").setInputFiles(config.importFiles);
-await page.waitForTimeout(1200);
+await page.locator(".uk-data-manager").waitFor({ state: "visible", timeout: 10000 });
+await page.locator(".uk-batch-import article").nth(config.importFiles.length - 1).waitFor({ state: "visible", timeout: 10000 });
+await page.waitForTimeout(450);
+const confirmBatch = page.getByRole("button", { name: "确认全部导入", exact: true });
+if (await confirmBatch.count()) {
+  await confirmBatch.click();
+  await page.waitForTimeout(450);
+}
 const closeManager = page.getByRole("button", { name: "关闭数据管理", exact: true });
 if (await closeManager.count()) await closeManager.click();
 
 for (const item of config.pages) {
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: item.section, exact: true }).click();
   if (item.sidebar) await page.locator(".uk-secondary-sidebar").getByRole("button", { name: item.sidebar, exact: true }).click();
-  await page.waitForTimeout(220);
+  await page.locator(item.actualSelector ?? config.rootSelector).waitFor({ state: "visible", timeout: 10000 });
+  await page.evaluate(() => document.fonts?.ready);
   await page.evaluate((scrollY) => window.scrollTo(0, scrollY), item.scrollY ?? 0);
-  await page.waitForTimeout(120);
-  const root = page.locator(config.rootSelector);
+  await page.waitForTimeout(160);
+  const root = page.locator(item.actualSelector ?? config.rootSelector);
   const rect = await root.evaluate((element) => {
     const box = element.getBoundingClientRect();
     return { x: box.x, y: box.y, width: box.width, height: box.height };
