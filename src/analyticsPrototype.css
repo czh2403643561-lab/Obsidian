@@ -479,6 +479,31 @@
 .uk-product-page .uk-horizontal-scroll-control { display: flex; align-items: center; gap: 8px; min-width: 210px; margin-left: auto; color: #858d95; font-size: 8px; }
 .uk-product-page .uk-horizontal-scroll-control input[type="range"] { width: 170px; height: 14px; margin: 0; accent-color: var(--uk-teal); cursor: ew-resize; }
 .uk-product-page .uk-horizontal-scroll-control input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
+.uk-product-page .uk-advanced-filter-popover { top: calc(100% + 2px); right: 0; display: block; width: 430px; max-height: 68vh; padding: 0; overflow: hidden; }
+.uk-product-page .uk-advanced-filter-popover > header { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding: 0 14px; border-bottom: 1px solid #edf0f1; }
+.uk-product-page .uk-advanced-filter-popover > header strong { color: #3d4650; font-size: 10px; font-weight: 600; }
+.uk-product-page .uk-advanced-filter-popover > header button { display: grid; padding: 3px; color: #8b949c; background: transparent; border: 0; }
+.uk-product-page .uk-filter-content { max-height: calc(68vh - 84px); padding: 12px 14px; overflow-y: auto; }
+.uk-product-page .uk-filter-section + .uk-filter-section { margin-top: 13px; padding-top: 11px; border-top: 1px solid #f0f1f2; }
+.uk-product-page .uk-filter-section h4 { margin: 0 0 9px; color: #747e87; font-size: 8px; font-weight: 600; }
+.uk-product-page .uk-filter-select { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 8px; margin-top: 7px; color: #626b74; font-size: 8px; }
+.uk-product-page .uk-filter-select select { width: 150px; height: 26px; padding: 0 7px; color: #515c66; background: #fff; border: 1px solid #e2e6e8; border-radius: 3px; font-size: 8px; }
+.uk-product-page .uk-filter-range { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 7px; margin-top: 7px; color: #626b74; font-size: 8px; }
+.uk-product-page .uk-filter-range > div { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; }
+.uk-product-page .uk-filter-range > div > i { color: #a2a8ae; font-style: normal; }
+.uk-product-page .uk-filter-input { display: flex; align-items: center; height: 25px; box-sizing: border-box; padding: 0 6px; background: #fff; border: 1px solid #e2e6e8; border-radius: 3px; }
+.uk-product-page .uk-filter-input:focus-within { border-color: #79c8c4; box-shadow: 0 0 0 2px rgba(39, 166, 161, .1); }
+.uk-product-page .uk-filter-input input { width: 100%; min-width: 0; padding: 0; color: #4d5862; background: transparent; border: 0; outline: 0; font-size: 8px; }
+.uk-product-page .uk-filter-input input::placeholder { color: #b4bac0; }
+.uk-product-page .uk-filter-input b { color: #8d969e; font-size: 8px; font-weight: 400; }
+.uk-product-page .uk-filter-error { grid-column: 2; color: #cf6b73; font-size: 7px; }
+.uk-product-page .uk-filter-check { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #626b74; font-size: 8px; }
+.uk-product-page .uk-filter-check input { width: 12px; height: 12px; margin: 0; accent-color: var(--uk-teal); }
+.uk-product-page .uk-advanced-filter-popover > footer { display: flex; align-items: center; justify-content: space-between; min-height: 45px; padding: 0 14px; border-top: 1px solid #edf0f1; background: #fff; }
+.uk-product-page .uk-advanced-filter-popover > footer button { min-width: 48px; height: 26px; padding: 0 10px; color: #68727b; background: #fff; border: 1px solid #e1e5e7; border-radius: 3px; font-size: 8px; }
+.uk-product-page .uk-advanced-filter-popover > footer button:last-child { color: #fff; background: var(--uk-teal); border-color: var(--uk-teal); }
+.uk-product-page .uk-product-filter-empty { display: grid; gap: 10px; place-items: center; }
+.uk-product-page .uk-product-filter-empty button { padding: 0; color: #087e7a; background: transparent; border: 0; font-size: 8px; }
 
 @media (max-width: 1100px) { .uk-product-page .uk-product-table-scroll { height: 560px; max-height: calc(100vh - 230px); min-height: 340px; }.uk-product-page .uk-horizontal-scroll-control { min-width: 180px; }.uk-product-page .uk-horizontal-scroll-control input[type="range"] { width: 140px; } }
 
