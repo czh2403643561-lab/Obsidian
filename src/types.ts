@@ -350,6 +350,7 @@ export interface BusinessProductRecord {
   name: string;
   publishStatus: string;
   gmvRange: string;
+  orders: number | null;
   card: BusinessCardMetrics;
   mall: BusinessMallMetrics;
 }

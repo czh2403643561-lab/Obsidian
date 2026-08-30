@@ -171,7 +171,7 @@ const parseProducts = (workbook: XLSX.WorkBook): BusinessProductRecord[] => {
   return rows.slice(headerRow + 1).flatMap((row, originalIndex) => {
     const productId = text(row[idIndex]);
     if (!productId) return [];
-    return [{ originalIndex, productId, name: text(row[nameIndex]) || "未命名商品", publishStatus: statusIndex >= 0 ? text(row[statusIndex]) : "未填写", gmvRange: rangeIndex >= 0 ? text(row[rangeIndex]) : "", card: cardMetrics(row, columns, "全部", true), mall: mallMetrics(row, columns) }];
+    return [{ originalIndex, productId, name: text(row[nameIndex]) || "未命名商品", publishStatus: statusIndex >= 0 ? text(row[statusIndex]) : "未填写", gmvRange: rangeIndex >= 0 ? text(row[rangeIndex]) : "", orders: valueByAliases(row, columns, "全部", ["订单数"]), card: cardMetrics(row, columns, "全部", true), mall: mallMetrics(row, columns) }];
   });
 };
 
