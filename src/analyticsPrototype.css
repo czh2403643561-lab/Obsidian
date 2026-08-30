@@ -672,6 +672,40 @@
 .hf-metric-modal > footer button { min-width: 55px; height: 30px; color: #4c535e; background: #f1f2f4; border: 0; border-radius: 3px; font-size: 9px; font-weight: 650; }
 .hf-metric-modal > footer button.primary { color: #fff; background: var(--purple); }
 
+/* UK Seller Center migration — batch 1 shell */
+.uk-analytics-shell { min-height: calc(100vh - 72px); }
+.uk-delay-notice { margin: 0 0 14px; padding: 10px 14px; color: #8b6721; background: #fff1c9; border: 1px solid #fde7ad; border-radius: 4px; font-size: 10px; }
+.uk-main-content { min-width: 0; }
+.uk-page-placeholder { display: grid; min-height: 390px; place-content: center; gap: 7px; color: #8d949d; text-align: center; background: #fff; border-radius: 4px; }
+.uk-page-placeholder h2 { margin: 0; color: #535a64; font-size: 13px; }
+.uk-page-placeholder p { margin: 0; font-size: 10px; }
+.uk-secondary-sidebar { min-height: 595px; }
+.uk-secondary-sidebar section + section { margin-top: 0; }
+.uk-secondary-sidebar .uk-sidebar-section { margin-top: 17px; }
+.uk-data-manager { width: 400px; }
+.uk-import-confirm { display: grid; gap: 7px; background: #fbfaff; }
+.uk-import-confirm > strong { color: #49408d; font-size: 10px; }
+.uk-import-confirm > small { color: #737a84; font-size: 9px; }
+.uk-import-confirm > div { display: flex; align-items: center; gap: 5px; }
+.uk-import-confirm input { width: 126px; height: 27px; padding: 0 6px; color: #505761; border: 1px solid #d9dce1; border-radius: 3px; font: inherit; font-size: 9px; }
+.uk-import-confirm footer { display: flex; justify-content: flex-end; }
+.uk-import-confirm footer button, .uk-manager-footer > button, .uk-manager-source footer button { min-height: 26px; padding: 0 8px; color: #5b5688; background: #f0effd; border: 0; border-radius: 3px; font-size: 9px; font-weight: 650; }
+.uk-manager-group { display: grid; gap: 8px; }
+.uk-manager-group h3 { margin: 0; color: #303641; font-size: 10px; }
+.uk-manager-source { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 9px; border: 1px solid #ececf0; border-radius: 3px; }
+.uk-manager-source > div { display: grid; gap: 3px; min-width: 0; }
+.uk-manager-source strong { color: #434954; font-size: 9px; }
+.uk-manager-source small { color: #8b919a; font-size: 8px; }
+.uk-manager-source footer { display: flex; align-items: start; gap: 4px; }
+.uk-manager-source footer button:last-child { color: #737a84; background: #f4f5f6; }
+.uk-history-list { grid-column: 1 / -1; display: grid; gap: 4px; padding-top: 3px; }
+.uk-history-list > button { display: grid; gap: 2px; padding: 6px 7px; color: #626974; text-align: left; background: #fafafb; border: 1px solid #eceef1; border-radius: 3px; font-size: 8px; }
+.uk-history-list > button.active { color: #514a9d; background: #f1efff; border-color: #ded9ff; }
+.uk-history-list small, .uk-history-list > span { color: #969ca5; font-size: 8px; }
+.uk-manager-footer { display: grid; gap: 7px; }
+.uk-manager-footer > button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 30px; }
+.uk-manager-footer p { margin: 0; color: #a05c39; font-size: 8px; line-height: 1.4; }
+
 @media (max-width: 1260px) {
   .hf-product-actions { margin-left: 0; }
   .hf-product-toolbar { flex-wrap: wrap; padding: 8px 0; }

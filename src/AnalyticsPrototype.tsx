@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import "./analyticsPrototype.css";
 import ProductAnalyticsList from "./ProductAnalyticsList";
+import UkAnalyticsShell from "./UkAnalyticsShell";
 import { getMetricDelta, selectPreviousBatch } from "./businessComparison";
 import { parseBusinessFiles, parseBusinessProductHistoryFile } from "./businessParser";
 import { getProductImageCacheSummary, saveProductImage, usePersistedState } from "./persistence";
@@ -510,5 +511,5 @@ function AlertTriangleIcon() {
 }
 
 export default function AnalyticsPrototype({ hidden = false }: { hidden?: boolean }) {
-  return <section className="hf-page" hidden={hidden} aria-hidden={hidden}><div className="hf-utility-rail" aria-hidden="true"><Store size={15} /><ShoppingBag size={15} /><Users size={15} /><Bell size={15} /><Info size={15} /></div><AnalyticsShell /></section>;
+  return <section className="hf-page" hidden={hidden} aria-hidden={hidden}><div className="hf-utility-rail" aria-hidden="true"><Store size={15} /><ShoppingBag size={15} /><Users size={15} /><Bell size={15} /><Info size={15} /></div><UkAnalyticsShell /></section>;
 }
