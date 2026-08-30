@@ -351,6 +351,65 @@
 
 @media (max-width: 1100px) { .uk-traffic-lower-grid { grid-template-columns: 1fr; }.uk-traffic-card-grid { grid-template-columns: repeat(2, 1fr); }.uk-traffic-card-grid article:nth-child(4n) { border-right: 1px solid #edf0f1; }.uk-traffic-card-grid article:nth-child(2n) { border-right: 0; }.uk-traffic-card-grid article:nth-last-child(-n+4) { border-bottom: 1px solid #edf0f1; }.uk-traffic-card-grid article:nth-last-child(-n+2) { border-bottom: 0; } }
 
+/* UK Seller Center Stage 4 — screenshot-aligned final overrides */
+.uk-analytics-shell { width: min(1200px, calc(100vw - 88px)); color: #303941; }
+.uk-analytics-shell .hf-page-header nav { gap: 24px; }
+.uk-analytics-shell .hf-page-header nav button { color: #424951; font-weight: 400; }
+.uk-analytics-shell .hf-page-header nav button.active { color: #20272e; font-weight: 500; }
+.uk-analytics-shell .hf-panel { border-radius: 3px; box-shadow: none; }
+.uk-analytics-shell .hf-page-header h1 { font-weight: 600; }
+.uk-analytics-shell .hf-data-manager { width: 360px; }
+.uk-analytics-shell .uk-product-page, .uk-analytics-shell .uk-traffic-page { background: transparent; border: 0; }
+.uk-product-page .uk-product-kind-tabs { min-height: 43px; background: #fff; border: 1px solid #edf0f1; border-radius: 3px 3px 0 0; }
+.uk-product-page .uk-product-source-tabs { padding-top: 11px; background: #fff; }
+.uk-product-page .uk-product-toolbar { background: #fff; }
+.uk-product-page .uk-product-identity strong { font-weight: 400; }
+.uk-product-page .uk-product-table td strong { font-weight: 400; }
+.uk-product-page .uk-product-table th, .uk-product-page .uk-product-table th button { font-weight: 400; }
+.uk-product-page .uk-product-table td { font-weight: 400; }
+.uk-product-page .uk-product-table-wrap { background: #fff; }
+.uk-product-page .uk-pagination { border-top: 1px solid #f0f1f2; }
+.uk-traffic-page .uk-traffic-source-tabs { padding-top: 11px; padding-bottom: 13px; background: #fff; border: 1px solid #edf0f1; border-radius: 3px; }
+.uk-traffic-page .uk-traffic-summary, .uk-traffic-page .uk-traffic-trend { margin-right: 0; margin-left: 0; background: #fff; }
+.uk-traffic-page .uk-traffic-summary { margin-top: 0; padding: 16px 18px 8px; border-bottom: 0; border-radius: 3px 3px 0 0; }
+.uk-traffic-page .uk-traffic-trend { margin-bottom: 12px; padding: 11px 18px 18px; border-top: 0; border-radius: 0 0 3px 3px; }
+.uk-traffic-page .uk-traffic-summary h2, .uk-traffic-page .uk-traffic-trend h2, .uk-traffic-page .uk-traffic-funnel h2, .uk-traffic-page .uk-traffic-breakdown h2 { font-weight: 600; }
+.uk-traffic-metric-group { margin-top: 14px; }
+.uk-traffic-metric-group > label { display: block; margin-bottom: 7px; color: #858d95; font-size: 8px; }
+.uk-traffic-metric-group > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.uk-traffic-metric-card { position: relative; display: grid; gap: 5px; min-height: 75px; padding: 10px 11px; color: #3b444c; background: #fff; border: 1px solid #edf0f1; border-radius: 3px; text-align: left; }
+.uk-traffic-metric-card.selected { background: #f0f1f2; border-color: #dfe4e5; box-shadow: inset 3px 0 0 var(--uk-teal); }
+.uk-traffic-metric-card small { color: #4b555e; font-size: 9px; font-weight: 400; }
+.uk-traffic-metric-card strong { color: #303941; font-size: 16px; font-weight: 500; }
+.uk-traffic-metric-card em { font-size: 8px; font-style: normal; }
+.uk-traffic-metric-card em.up { color: #16a36a; }.uk-traffic-metric-card em.down { color: #de5c69; }.uk-traffic-metric-card em.neutral { color: #929aa1; }
+.uk-metric-checkbox { position: absolute; top: 10px; right: 10px; display: grid; width: 13px; height: 13px; place-items: center; color: #fff; border: 1px solid #d6dcdd; border-radius: 3px; font-size: 9px; }
+.uk-traffic-metric-card.selected .uk-metric-checkbox { background: var(--uk-teal); border-color: var(--uk-teal); }
+.uk-traffic-page .uk-traffic-trend header { align-items: center; }
+.uk-traffic-page .uk-trend-legend { margin: 0; }
+.uk-traffic-page .uk-trend-chart { margin-top: 9px; }
+.uk-traffic-page .uk-trend-chart svg { height: 180px; }
+.uk-traffic-page .uk-trend-chart path { stroke-width: 1.6; }
+.uk-traffic-page .uk-traffic-funnel { margin: 0 0 12px; padding: 16px 18px 22px; background: #fff; border: 1px solid #edf0f1; border-radius: 3px; }
+.uk-traffic-page .uk-traffic-funnel .uk-funnel-flow { width: 72%; margin-left: auto; }
+.uk-traffic-page .uk-funnel-step { min-height: 48px; border-radius: 0; font-size: 9px; }
+.uk-traffic-page .uk-funnel-step strong { font-size: 13px; font-weight: 500; }
+.uk-traffic-page .uk-funnel-step em { font-size: 8px; }
+.uk-traffic-page .uk-funnel-foot { padding-top: 12px; font-size: 9px; }
+.uk-traffic-page .uk-funnel-foot strong { font-weight: 500; }
+.uk-traffic-page .uk-traffic-breakdown { margin: 0; padding: 16px 18px 0; background: #fff; border: 1px solid #edf0f1; border-radius: 3px; }
+.uk-traffic-page .uk-traffic-breakdown table { min-width: 680px; }
+.uk-traffic-page .uk-traffic-breakdown th { height: 37px; font-weight: 400; }
+.uk-traffic-page .uk-traffic-breakdown td { height: 62px; font-weight: 400; }
+.uk-traffic-page .uk-traffic-breakdown td small, .uk-traffic-page .uk-traffic-breakdown td strong, .uk-traffic-page .uk-traffic-breakdown td em { display: block; }
+.uk-traffic-page .uk-traffic-breakdown td small { color: #69727a; font-size: 8px; }
+.uk-traffic-page .uk-traffic-breakdown td strong { color: #303941; font-size: 11px; font-weight: 400; }
+.uk-traffic-page .uk-traffic-breakdown td em { margin-top: 3px; color: #929aa1; font-size: 8px; font-style: normal; }
+.uk-traffic-page .uk-traffic-breakdown td em.up { color: #16a36a; }.uk-traffic-page .uk-traffic-breakdown td em.down { color: #de5c69; }
+.uk-traffic-page .uk-traffic-breakdown td button { font-weight: 400; }
+
+@media (max-width: 1100px) { .uk-analytics-shell { width: calc(100vw - 52px); }.uk-traffic-metric-group > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }.uk-traffic-page .uk-traffic-funnel .uk-funnel-flow { width: 100%; } }
+
 /* Product data analytics: independent Seller Center detailed-information list */
 .hf-product-analytics-layout { position: relative; }
 .hf-product-analytics-sidebar { min-height: 595px; }
