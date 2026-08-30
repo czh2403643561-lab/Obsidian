@@ -27,11 +27,11 @@ import {
 import "./analyticsPrototype.css";
 import ProductAnalyticsList from "./ProductAnalyticsList";
 import { getMetricDelta, selectPreviousBatch } from "./businessComparison";
-import { parseBusinessFiles } from "./businessParser";
+import { parseBusinessFiles, parseBusinessProductHistoryFile } from "./businessParser";
 import { getProductImageCacheSummary, saveProductImage, usePersistedState } from "./persistence";
 import { requestProductImages } from "./productImageBridge";
 import ProductThumbnail from "./ProductThumbnail";
-import type { BusinessBatch, BusinessProductRecord } from "./types";
+import type { BusinessBatch, BusinessProductHistoryBatch, BusinessProductRecord } from "./types";
 
 type MetricKey = "gmv" | "units" | "skuOrders" | "orders";
 type CardPage = "performance" | "details";
@@ -48,7 +48,7 @@ const overviewColors: Record<MetricKey, string> = { gmv: "#6559e8", units: "#2e9
 const formatOverviewCurrency = (value: number | null, symbol: string): string => value === null ? "—" : `${symbol}${value.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatOverviewValue = (key: MetricKey, value: number | null, symbol: string): string => key === "gmv" ? formatOverviewCurrency(value, symbol) : value === null ? "—" : value.toLocaleString("en-GB", { maximumFractionDigits: 0 });
 const formatIsoDate = (value: string): string => value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$1/$2/$3");
-const sortBatches = (batches: BusinessBatch[]) => [...batches].sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate));
+const sortBatches = <T extends Pick<BusinessBatch, "startDate" | "endDate">>(batches: T[]): T[] => [...batches].sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate));
 const deltaText = (current: number | null, previous: number | null, rate = false): { text: string; tone: "positive" | "negative" | "neutral" } => {
   const delta = getMetricDelta(current, previous, rate);
   if (delta.kind === "new") return { text: "新增", tone: "positive" };
@@ -367,10 +367,11 @@ function BreakdownPanel({ batch }: { batch: BusinessBatch | null }) {
 
 interface HighFidelityAnalyticsState {
   batches: BusinessBatch[];
+  productHistoryBatches: BusinessProductHistoryBatch[];
   activeBatchId: string | null;
 }
 
-const initialHighFidelityState = (): HighFidelityAnalyticsState => ({ batches: [], activeBatchId: null });
+const initialHighFidelityState = (): HighFidelityAnalyticsState => ({ batches: [], productHistoryBatches: [], activeBatchId: null });
 
 function AnalyticsDataNotice({ batch, visible, onClose }: { batch: BusinessBatch | null; visible: boolean; onClose: () => void }) {
   if (!batch || !visible) return null;
@@ -380,17 +381,24 @@ function AnalyticsDataNotice({ batch, visible, onClose }: { batch: BusinessBatch
 
 type ImageSyncScope = "20" | "30" | "sold";
 
-function AnalyticsDataManager({ batches, activeBatch, onSelectBatch, onDeleteBatch, onImport, onClose }: {
+function AnalyticsDataManager({ batches, productHistoryBatches, activeBatch, onSelectBatch, onDeleteBatch, onDeleteHistory, onImportFull, onImportHistory, onClose }: {
   batches: BusinessBatch[];
+  productHistoryBatches: BusinessProductHistoryBatch[];
   activeBatch: BusinessBatch | null;
   onSelectBatch: (id: string) => void;
   onDeleteBatch: (id: string) => void;
-  onImport: () => void;
+  onDeleteHistory: (id: string) => void;
+  onImportFull: () => void;
+  onImportHistory: () => void;
   onClose: () => void;
 }) {
   const [scope, setScope] = useState<ImageSyncScope>("30");
   const [cacheSummary, setCacheSummary] = useState({ cached: 0, latestFetchedAt: null as string | null });
   const [syncMessage, setSyncMessage] = useState("");
+  const managedPeriods = useMemo(() => [
+    ...batches.map((batch) => ({ kind: "full" as const, batch })),
+    ...productHistoryBatches.map((batch) => ({ kind: "history" as const, batch })),
+  ].sort((left, right) => right.batch.endDate.localeCompare(left.batch.endDate) || right.batch.startDate.localeCompare(left.batch.startDate)), [batches, productHistoryBatches]);
   const productIds = useMemo(() => [...new Set((activeBatch?.products ?? []).map((product) => product.productId))], [activeBatch]);
   const reloadCacheSummary = () => void getProductImageCacheSummary(productIds).then(setCacheSummary);
   useEffect(reloadCacheSummary, [productIds]);
@@ -407,7 +415,7 @@ function AnalyticsDataManager({ batches, activeBatch, onSelectBatch, onDeleteBat
   };
   return <aside className="hf-data-manager" aria-label="数据管理">
     <header><div><strong>数据管理</strong><small>本地保存于当前浏览器</small></div><button onClick={onClose} aria-label="关闭数据管理"><X size={15} /></button></header>
-    <section><div className="hf-manager-section-heading"><div><h3>周期数据</h3><small>已保存 {batches.length} 个周期</small></div><button onClick={onImport}>导入一个周期</button></div><p className="hf-manager-import-note">一次选择同一周期的商品数据、商品卡专项、全部流量三份 Excel。</p><div className="hf-manager-batches">{batches.length ? batches.map((batch) => <article key={batch.id} className={batch.id === activeBatch?.id ? "active" : ""}><div><strong>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</strong>{batch.id === activeBatch?.id && <em>当前</em>}<small>文件：✓ 商品数据　✓ 商品卡专项　✓ 全部流量</small><small>导入时间：{new Date(batch.importedAt).toLocaleString("zh-CN", { hour12: false })}</small></div><footer><button disabled={batch.id === activeBatch?.id} onClick={() => onSelectBatch(batch.id)}>切换</button><button className="danger" onClick={() => onDeleteBatch(batch.id)} aria-label={`删除 ${batch.startDate} 至 ${batch.endDate}`}><Trash2 size={13} /> 删除</button></footer></article>) : <div className="hf-manager-empty">尚未导入完整周期</div>}</div></section>
+    <section><div className="hf-manager-section-heading"><div><h3>周期数据</h3><small>已保存 {managedPeriods.length} 个周期</small></div></div><div className="hf-manager-import-actions"><button onClick={onImportFull}>导入完整周期</button><button onClick={onImportHistory}>补充商品历史</button></div><p className="hf-manager-import-note">完整周期：一次选择同一周期的商品数据、商品卡专项、全部流量三份 Excel。补充商品历史：只导入商品数据 Excel，用于商品级比较与趋势。</p><div className="hf-manager-batches">{managedPeriods.length ? managedPeriods.map(({ kind, batch }) => <article key={`${kind}-${batch.id}`} className={kind === "full" && batch.id === activeBatch?.id ? "active" : ""}><div><strong>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</strong><em>{kind === "full" ? "完整周期" : "仅商品数据"}</em>{kind === "full" && batch.id === activeBatch?.id && <em>当前使用</em>}<small>{batch.products.length} 商品</small><small>文件：✓ 商品数据　{kind === "full" ? "✓ 商品卡专项　✓ 全部流量" : "— 商品卡专项　— 全部流量"}</small><small>导入时间：{new Date(batch.importedAt).toLocaleString("zh-CN", { hour12: false })}</small></div><footer>{kind === "full" && <button disabled={batch.id === activeBatch?.id} onClick={() => onSelectBatch(batch.id)}>切换</button>}<button className="danger" onClick={() => kind === "full" ? onDeleteBatch(batch.id) : onDeleteHistory(batch.id)} aria-label={`删除 ${batch.startDate} 至 ${batch.endDate}`}><Trash2 size={13} /> 删除</button></footer></article>) : <div className="hf-manager-empty">尚未导入周期数据</div>}</div><p className="hf-manager-storage-note">数据仅保存在当前浏览器；清除浏览器站点数据会删除历史记录。</p></section>
     <section><div className="hf-manager-section-heading"><div><h3>商品资料缓存</h3><small>按 Product ID 跨周期复用</small></div><Image size={15} /></div><div className="hf-image-cache-status"><strong>已缓存主图：{cacheSummary.cached} / {productIds.length}</strong><span>待同步：{Math.max(0, productIds.length - cacheSummary.cached)}　失败：0</span><span>建议同步：GMV 前 30 商品</span><span>最近同步：{cacheSummary.latestFetchedAt ? new Date(cacheSummary.latestFetchedAt).toLocaleString("zh-CN", { hour12: false }) : "从未同步"}</span></div><div className="hf-image-cache-actions"><select aria-label="同步范围" value={scope} onChange={(event) => setScope(event.target.value as ImageSyncScope)}><option value="20">GMV 前 20</option><option value="30">GMV 前 30</option><option value="sold">所有有成交商品</option></select><button onClick={() => void syncImages()}>同步重点商品主图</button></div>{syncMessage && <p className="hf-image-sync-message">{syncMessage}</p>}</section>
   </aside>;
 }
@@ -417,6 +425,7 @@ function AnalyticsShell() {
   const [state, setState, restored] = usePersistedState<HighFidelityAnalyticsState>("high-fidelity-analytics", initialHighFidelityState);
   const [overviewError, setOverviewError] = useState("");
   const overviewInput = useRef<HTMLInputElement>(null);
+  const productHistoryInput = useRef<HTMLInputElement>(null);
   const [section, setSection] = useState<"store" | "card" | "productData">("store");
   const [cardPage, setCardPage] = useState<CardPage>("performance");
   const [selectedMetrics, setSelectedMetrics] = useState(defaultSelectedMetrics);
@@ -426,6 +435,7 @@ function AnalyticsShell() {
   const [periodOpen, setPeriodOpen] = useState(false);
   const [dataManagerOpen, setDataManagerOpen] = useState(false);
   const batches = useMemo(() => sortBatches(state.batches), [state.batches]);
+  const productHistoryBatches = useMemo(() => sortBatches(state.productHistoryBatches ?? []) as BusinessProductHistoryBatch[], [state.productHistoryBatches]);
   const overviewBatch = batches.find((batch) => batch.id === state.activeBatchId) ?? batches[0] ?? null;
   const previousBatch = useMemo(() => selectPreviousBatch(batches, overviewBatch), [batches, overviewBatch]);
   useEffect(() => {
@@ -440,12 +450,26 @@ function AnalyticsShell() {
       const next = await parseBusinessFiles(Array.from(files));
       setState((current) => {
         const saved = sortBatches([...current.batches.filter((batch) => batch.startDate !== next.startDate || batch.endDate !== next.endDate), next]);
-        return { ...current, batches: saved, activeBatchId: saved[0]?.id ?? null };
+        return { ...current, batches: saved, productHistoryBatches: (current.productHistoryBatches ?? []).filter((batch) => batch.startDate !== next.startDate || batch.endDate !== next.endDate), activeBatchId: saved[0]?.id ?? null };
       });
       setNotice(true);
     }
     catch (caught) { setOverviewError(caught instanceof Error ? caught.message : "文件解析失败，请选择同一周期的三份官方 Excel。"); }
     finally { if (overviewInput.current) overviewInput.current.value = ""; }
+  };
+  const importProductHistory = async (files: FileList | File[]) => {
+    setOverviewError("");
+    try {
+      const file = Array.from(files)[0];
+      if (!file) return;
+      const next = await parseBusinessProductHistoryFile(file);
+      if (batches.some((batch) => batch.startDate === next.startDate && batch.endDate === next.endDate)) {
+        setOverviewError("该周期已存在完整周期数据，无需重复补充商品历史。");
+        return;
+      }
+      setState((current) => ({ ...current, productHistoryBatches: sortBatches([...(current.productHistoryBatches ?? []).filter((batch) => batch.startDate !== next.startDate || batch.endDate !== next.endDate), next]) as BusinessProductHistoryBatch[] }));
+    } catch (caught) { setOverviewError(caught instanceof Error ? caught.message : "文件解析失败，请选择商品数据 Excel。"); }
+    finally { if (productHistoryInput.current) productHistoryInput.current.value = ""; }
   };
   const selectBatch = (id: string) => { setState((current) => ({ ...current, activeBatchId: id })); setDetailProduct(null); setPeriodOpen(false); };
   const deleteBatch = (id: string) => {
@@ -453,16 +477,21 @@ function AnalyticsShell() {
     if (!batch || !window.confirm(`确定删除 ${formatIsoDate(batch.startDate)} – ${formatIsoDate(batch.endDate)} 的周期数据吗？商品图片缓存将保留。`)) return;
     setState((current) => {
       const remaining = sortBatches(current.batches.filter((item) => item.id !== id));
-      return { batches: remaining, activeBatchId: current.activeBatchId === id ? remaining[0]?.id ?? null : current.activeBatchId };
+      return { ...current, batches: remaining, activeBatchId: current.activeBatchId === id ? remaining[0]?.id ?? null : current.activeBatchId };
     });
+  };
+  const deleteProductHistory = (id: string) => {
+    const batch = productHistoryBatches.find((item) => item.id === id);
+    if (!batch || !window.confirm(`确定删除 ${formatIsoDate(batch.startDate)} – ${formatIsoDate(batch.endDate)} 的商品历史数据吗？`)) return;
+    setState((current) => ({ ...current, productHistoryBatches: (current.productHistoryBatches ?? []).filter((item) => item.id !== id) }));
   };
   return (
     <main className="hf-analytics-shell">
       <header className="hf-page-header">
         <div><h1>数据分析</h1><nav aria-label="分析导航"><button className={section === "store" ? "active" : ""} onClick={() => { setSection("store"); setDetailProduct(null); }}>店铺数据分析</button><button>成长和数据分析</button><button>内容分析</button><button className={section === "card" ? "active" : ""} onClick={() => { setSection("card"); setDetailProduct(null); }}>商品卡</button><button className={section === "productData" ? "active" : ""} onClick={() => { setSection("productData"); setDetailProduct(null); }}>商品数据分析</button><button>营销数据分析</button><button>售后数据分析</button></nav></div>
-        <div className="hf-date-control"><span>(GMT+08:00)</span><div className="hf-period-picker"><button onClick={() => setPeriodOpen((open) => !open)}>最近 7 天：　{overviewBatch ? `${formatIsoDate(overviewBatch.startDate)}　–　${formatIsoDate(overviewBatch.endDate)}` : "未导入周期"} <CalendarDays size={14} /></button>{periodOpen && <div className="hf-period-menu">{batches.length ? <>{batches.map((batch) => <button key={batch.id} className={batch.id === overviewBatch?.id ? "active" : ""} onClick={() => selectBatch(batch.id)}>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</button>)}<small>当前 {overviewBatch ? `${formatIsoDate(overviewBatch.startDate)} – ${formatIsoDate(overviewBatch.endDate)}` : "--"} · 已保存 {batches.length} 个周期</small></> : <span>尚未导入完整周期</span>}</div>}</div><small className="hf-history-count">已保存 {batches.length} 个周期</small><button className="compare-date">{previousBatch ? `对比 ${formatIsoDate(previousBatch.startDate)} – ${formatIsoDate(previousBatch.endDate)}` : "暂无可比较周期"}</button><button className="hf-data-manager-trigger" onClick={() => setDataManagerOpen((open) => !open)}>数据管理</button>{section === "store" && <button className="hf-overview-import" onClick={() => overviewInput.current?.click()}>导入一个周期</button>}{dataManagerOpen && <AnalyticsDataManager batches={batches} activeBatch={overviewBatch} onSelectBatch={selectBatch} onDeleteBatch={deleteBatch} onImport={() => { setDataManagerOpen(false); overviewInput.current?.click(); }} onClose={() => setDataManagerOpen(false)} />}</div>
+        <div className="hf-date-control"><span>(GMT+08:00)</span><div className="hf-period-picker"><button onClick={() => setPeriodOpen((open) => !open)}>最近 7 天：　{overviewBatch ? `${formatIsoDate(overviewBatch.startDate)}　–　${formatIsoDate(overviewBatch.endDate)}` : "未导入周期"} <CalendarDays size={14} /></button>{periodOpen && <div className="hf-period-menu">{batches.length ? <>{batches.map((batch) => <button key={batch.id} className={batch.id === overviewBatch?.id ? "active" : ""} onClick={() => selectBatch(batch.id)}>{formatIsoDate(batch.startDate)} – {formatIsoDate(batch.endDate)}</button>)}<small>当前 {overviewBatch ? `${formatIsoDate(overviewBatch.startDate)} – ${formatIsoDate(overviewBatch.endDate)}` : "--"} · 已保存 {batches.length} 个完整周期</small></> : <span>尚未导入完整周期</span>}</div>}</div><small className="hf-history-count">已保存 {batches.length} 个完整周期</small><button className="compare-date">{previousBatch ? `对比 ${formatIsoDate(previousBatch.startDate)} – ${formatIsoDate(previousBatch.endDate)}` : "暂无可比较周期"}</button><button className="hf-data-manager-trigger" onClick={() => setDataManagerOpen((open) => !open)}>数据管理</button>{section === "store" && <button className="hf-overview-import" onClick={() => overviewInput.current?.click()}>导入完整周期</button>}{dataManagerOpen && <AnalyticsDataManager batches={batches} productHistoryBatches={productHistoryBatches} activeBatch={overviewBatch} onSelectBatch={selectBatch} onDeleteBatch={deleteBatch} onDeleteHistory={deleteProductHistory} onImportFull={() => { setDataManagerOpen(false); overviewInput.current?.click(); }} onImportHistory={() => { setDataManagerOpen(false); productHistoryInput.current?.click(); }} onClose={() => setDataManagerOpen(false)} />}</div>
       </header>
-      {section === "productData" ? <><div className="hf-main-content"><AnalyticsDataNotice batch={overviewBatch} visible={notice} onClose={() => setNotice(false)} /></div><ProductAnalyticsList batch={overviewBatch} previousBatch={previousBatch} batches={batches} /></> : <div className="hf-analytics-layout">
+      {section === "productData" ? <><div className="hf-main-content"><AnalyticsDataNotice batch={overviewBatch} visible={notice} onClose={() => setNotice(false)} /></div><ProductAnalyticsList batch={overviewBatch} batches={batches} productHistoryBatches={productHistoryBatches} /></> : <div className="hf-analytics-layout">
         {section === "store" ? <AnalyticsSidebar /> : <ProductCardSidebar page={cardPage} onPage={(page) => { setCardPage(page); setDetailProduct(null); }} />}
         <div className="hf-main-content">
           <AnalyticsDataNotice batch={overviewBatch} visible={notice} onClose={() => setNotice(false)} />
@@ -470,6 +499,7 @@ function AnalyticsShell() {
         </div>
       </div>}
       <input ref={overviewInput} type="file" multiple accept=".xlsx,.xls" hidden onChange={(event) => void importOverview(event.target.files ?? [])} />
+      <input ref={productHistoryInput} type="file" accept=".xlsx,.xls" hidden onChange={(event) => void importProductHistory(event.target.files ?? [])} />
       {metricModal && <MetricModal draft={metricDraft} onToggle={toggleMetric} onRemove={(name) => setMetricDraft((current) => current.filter((item) => item !== name))} onCancel={() => { setMetricDraft(selectedMetrics); setMetricModal(false); }} onConfirm={() => { setSelectedMetrics(metricDraft); setMetricModal(false); }} />}
     </main>
   );

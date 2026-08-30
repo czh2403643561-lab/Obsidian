@@ -38,13 +38,33 @@ export const deltaSortValue = (current: number | null, previous: number | null, 
 
 export const indexProducts = (batch: BusinessProductDataBatch | null): Map<string, BusinessProductRecord> => new Map((batch?.products ?? []).map((product) => [product.productId, product]));
 
-export const selectPreviousProductBatch = (batches: BusinessBatch[], historyBatches: BusinessProductHistoryBatch[], activeBatch: BusinessBatch | null): BusinessProductDataBatch | null => {
-  if (!activeBatch) return null;
-  const complete = batches.filter((candidate) => candidate.id !== activeBatch.id && candidate.endDate < activeBatch.endDate)
-    .sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate))[0];
-  if (complete) return complete;
-  return historyBatches.filter((candidate) => candidate.endDate < activeBatch.endDate)
+const samePeriod = (left: Pick<BusinessProductDataBatch, "startDate" | "endDate">, right: Pick<BusinessProductDataBatch, "startDate" | "endDate">) => left.startDate === right.startDate && left.endDate === right.endDate;
+
+export const buildProductHistoryBatches = (batches: BusinessBatch[], historyBatches: BusinessProductHistoryBatch[]): BusinessProductDataBatch[] => {
+  const fullPeriods = new Set(batches.map((batch) => `${batch.startDate}/${batch.endDate}`));
+  return [...batches, ...historyBatches.filter((batch) => !fullPeriods.has(`${batch.startDate}/${batch.endDate}`))]
+    .sort((left, right) => left.endDate.localeCompare(right.endDate) || left.startDate.localeCompare(right.startDate));
+};
+
+export const findPreviousProductPeriod = (current: BusinessProductDataBatch | null, productBatches: BusinessProductDataBatch[]): BusinessProductDataBatch | null => {
+  if (!current) return null;
+  return productBatches.filter((batch) => !samePeriod(batch, current) && batch.endDate < current.endDate)
     .sort((left, right) => right.endDate.localeCompare(left.endDate) || right.startDate.localeCompare(left.startDate))[0] ?? null;
+};
+
+export const findPreviousProduct = (productId: string, current: BusinessProductDataBatch | null, productBatches: BusinessProductDataBatch[]): BusinessProductRecord | null => {
+  return indexProducts(findPreviousProductPeriod(current, productBatches)).get(productId) ?? null;
+};
+
+export const getProductHistory = (productId: string, productBatches: BusinessProductDataBatch[]): Array<{ batch: BusinessProductDataBatch; product: BusinessProductRecord }> => {
+  return productBatches.flatMap((batch) => {
+    const product = batch.products.find((item) => item.productId === productId);
+    return product ? [{ batch, product }] : [];
+  });
+};
+
+export const selectPreviousProductBatch = (batches: BusinessBatch[], historyBatches: BusinessProductHistoryBatch[], activeBatch: BusinessBatch | null): BusinessProductDataBatch | null => {
+  return findPreviousProductPeriod(activeBatch, buildProductHistoryBatches(batches, historyBatches));
 };
 
 export const getProductMatchStats = (current: BusinessBatch, previous: BusinessProductDataBatch | null) => {
