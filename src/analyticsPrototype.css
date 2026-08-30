@@ -690,6 +690,26 @@
 .uk-import-confirm input { width: 126px; height: 27px; padding: 0 6px; color: #505761; border: 1px solid #d9dce1; border-radius: 3px; font: inherit; font-size: 9px; }
 .uk-import-confirm footer { display: flex; justify-content: flex-end; }
 .uk-import-confirm footer button, .uk-manager-footer > button, .uk-manager-source footer button { min-height: 26px; padding: 0 8px; color: #5b5688; background: #f0effd; border: 0; border-radius: 3px; font-size: 9px; font-weight: 650; }
+.uk-batch-import { display: grid; gap: 9px; background: #fbfdfd; }
+.uk-batch-import > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.uk-batch-import > header strong { color: #35444a; font-size: 10px; }
+.uk-batch-import > header small { color: #889298; font-size: 8px; white-space: nowrap; }
+.uk-batch-import > div { display: grid; gap: 5px; }
+.uk-batch-import article { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 5px; padding: 7px; background: #fff; border: 1px solid #e8eeed; border-radius: 3px; }
+.uk-batch-import article > span { display: grid; width: 16px; height: 16px; place-items: center; color: #168f76; background: #e9f8f1; border-radius: 50%; font-size: 9px; font-weight: 700; }
+.uk-batch-import article > div { display: grid; gap: 3px; min-width: 0; }
+.uk-batch-import article strong { color: #475158; font-size: 8px; font-weight: 600; }
+.uk-batch-import article small { color: #899299; font-size: 8px; line-height: 1.35; }
+.uk-batch-import article.needs-period { border-color: #f1dca5; }
+.uk-batch-import article.needs-period > span { color: #a77919; background: #fff4d5; }
+.uk-batch-import article.failed { border-color: #f1d4d7; }
+.uk-batch-import article.failed > span { color: #bf5965; background: #fff0f1; }
+.uk-batch-import article.duplicate > span { color: #8d7b3e; background: #fbf3d5; }
+.uk-batch-import article p { display: flex; align-items: center; gap: 4px; margin: 2px 0 0; }
+.uk-batch-import article input { width: 116px; height: 24px; padding: 0 5px; color: #586269; border: 1px solid #dfe5e4; border-radius: 3px; font: inherit; font-size: 8px; }
+.uk-batch-import article p b { color: #9ca4a7; font-size: 9px; font-weight: 400; }
+.uk-batch-import footer { display: flex; justify-content: flex-end; }
+.uk-batch-import footer button { min-height: 27px; padding: 0 9px; color: #fff; background: #0d9d99; border: 0; border-radius: 3px; font-size: 9px; font-weight: 600; }
 .uk-manager-group { display: grid; gap: 8px; }
 .uk-manager-group h3 { margin: 0; color: #303641; font-size: 10px; }
 .uk-manager-source { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 9px; border: 1px solid #ececf0; border-radius: 3px; }
