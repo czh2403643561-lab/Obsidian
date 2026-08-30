@@ -139,15 +139,19 @@
 }
 .hf-sidebar section + section { margin-top: 17px; }
 .hf-sidebar section > span { display: block; padding: 0 10px 6px; color: #7d838b; font-size: 11px; }
-.hf-sidebar section > div {
+.hf-sidebar section > div, .hf-sidebar section > button {
   display: flex;
   align-items: center;
   min-height: 31px;
   padding: 0 18px;
   color: #656b75;
+  background: transparent;
+  border: 0;
   font-size: 11px;
+  text-align: left;
+  width: 100%;
 }
-.hf-sidebar section > div.active { color: var(--purple); background: #f0eff4; font-weight: 700; }
+.hf-sidebar section > div.active, .hf-sidebar section > button.active { color: var(--purple); background: #f0eff4; font-weight: 700; }
 
 .hf-main-content { min-width: 0; }
 .hf-delay-notice {
@@ -326,6 +330,14 @@
 .hf-product-analytics-table th svg { vertical-align: middle; color: #8f949c; }
 .hf-product-analytics-table th button { padding: 0; color: inherit; background: transparent; border: 0; font: inherit; }
 .hf-product-analytics-table th.sorted { color: var(--purple); background: #f2f0ff; }
+.hf-product-traffic-table { min-width: 900px; }
+.hf-product-traffic-table th:first-child { width: 29%; }
+.hf-product-traffic-table th:nth-child(2), .hf-product-traffic-table th:nth-child(3), .hf-product-traffic-table th:nth-child(4), .hf-product-traffic-table th:nth-child(5), .hf-product-traffic-table th:nth-child(6), .hf-product-traffic-table th:nth-child(7), .hf-product-traffic-table th:nth-child(8) { width: 9%; }
+.hf-product-traffic-table th:last-child { width: 8%; }
+.hf-product-traffic-page .hf-product-analytics-tools { min-height: 52px; }
+.hf-traffic-mode { flex: 0 0 auto; }
+.hf-traffic-mode button { height: 26px; padding: 0 9px; font-size: 8px; }
+.hf-traffic-perspective-tabs { flex-basis: 350px; }
 .hf-product-analytics-table td { height: 54px; padding: 0 7px; color: #3b424d; border-bottom: 1px solid #e5e6e8; font-size: 9px; font-weight: 400; text-align: center; font-variant-numeric: tabular-nums; }
 .hf-product-analytics-table td:first-child { padding-left: 15px; text-align: left; }
 .hf-product-analytics-table td:not(:first-child) > strong { display: block; font-size: 10px; font-weight: 500; }
